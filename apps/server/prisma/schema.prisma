@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String
+  avatar    String
+  bio       String?
+  website   String?
+  refreshToken String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  albums    Album[]
+  tracks    Track[]
+  playlists Playlist[]
+  likes     Like[]
+  followers Follow[] @relation("following")
+  following Follow[] @relation("follower")
+  comments  Comment[] 
+  commentLikes CommentLike[]
+  mentionedIn Comment[] @relation("CommentMentions")
+  // 받은 알림
+  receivedNotifications Notification[] @relation("receivedNotifications")
+  // 발신한 알림
+  sentNotifications    Notification[] @relation("sentNotifications")
+  taggedIn     UserTag[]
+  notificationSettings NotificationSetting?
+  activityHistory UserActivityHistory[]
+  inquiries       Inquiry[]        // 사용자가 작성한 문의
+  inquiryAnswers  InquiryAnswer[]  // 관리자가 작성한 답변
+
+  @@index([email])
+}
+
+model Album {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  coverImage  String?
+  releaseDate DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  artist    User     @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId  String
+  tracks    Track[]
+  likes     Like[]
+  taggedUsers  UserTag[]
+
+  @@index([artistId])
+}
+
+model Track {
+  id        String   @id @default(cuid())
+  title     String
+  duration  Int
+  audioUrl  String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  description String?  // 트랙 설명
+  lyrics     String?  // 가사
+  credit    String?    // 크레딧 정보 (작곡가, 작사가 등)
+
+  // Relations
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  albumId   String
+  artist    User     @relation(fields: [artistId], references: [id])
+  artistId  String
+  playlists PlaylistTrack[]
+  likes     Like[]
+
+  plays     Int      @default(0)
+  activityLogs TrackActivityLog[]
+
+  @@index([albumId])
+  @@index([artistId])
+}
+
+model Playlist {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  coverImage  String?
+  isPublic    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks      PlaylistTrack[]
+  likes     Like[]
+  taggedUsers  UserTag[]
+
+  @@index([userId])
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  position   Int
+  addedAt    DateTime @default(now())
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  playlistId String
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  trackId    String
+
+  @@unique([playlistId, trackId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  itemType  String   // 'album' | 'track' | 'playlist'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album     Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  albumId   String?
+  track     Track?   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  trackId   String?
+  playlist  Playlist? @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  playlistId String?
+
+  @@unique([userId, itemId, itemType])
+  @@index([userId])
+  @@index([itemId])
+  @@index([itemType])
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  followerId String
+  follower   User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  
+  followingId String
+  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// 댓글 타입 정의
+enum CommentType {
+  ALBUM
+  PLAYLIST
+}
+
+// 댓글 모델
+model Comment {
+  id        String      @id @default(cuid())
+  content   String      @db.Text
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  isDeleted Boolean     @default(false)
+
+  // 작성자 관계
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 대댓글 관계
+  parentId  String?
+  parent    Comment?    @relation("CommentToComment", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies   Comment[]   @relation("CommentToComment")
+
+  // 앨범/플레이리스트 관계
+  type      CommentType
+  targetId  String
+
+  // 인덱스
+  @@index([type, targetId])
+  @@index([userId])
+  @@index([parentId])
+
+  likes CommentLike[]
+  mentions    User[]    @relation("CommentMentions")
+}
+
+// CommentLike 모델 추가
+model CommentLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String
+
+  @@unique([userId, commentId])
+  @@index([userId])
+  @@index([commentId])
+}
+
+enum NotificationType {
+  COMMENT      // 댓글 알림
+  REPLY        // 답글 알림
+  MENTION      // 멘션 알림
+  LIKE         // 좋아요 알림
+  FOLLOW       // 팔로우 알림
+  NEW_ALBUM    // 새 앨범 알림
+  NEW_PLAYLIST // 새 플레이리스트 알림
+  ALBUM_TAGGED      // 앨범에 태그됨
+  PLAYLIST_TAGGED   // 플레이리스트에 태그됨
+  NEW_INQUIRY      // 새 문의 알림
+  INQUIRY_ANSWERED // 문의 답변 알림
+  INQUIRY_UPDATED  // 문의 상태 변경 알림
+}
+
+model Notification {
+  id          String          @id @default(cuid())
+  type        NotificationType
+  content     String         // 알림 내용
+  isRead      Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  
+  // 수신자 관계
+  userId      String
+  user        User           @relation("receivedNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 발신자 관계
+  actorId     String
+  actor       User           @relation("sentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+  
+  // 대상 정보 (polymorphic relation)
+  targetId    String         // 댓글 ID, 게시물 ID 등
+  targetType  String         // "Comment", "Post" 등
+
+  parentContent Json?
+  
+  @@index([userId])
+  @@index([actorId])
+  @@index([isRead])
+}
+
+model UserTag {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  
+  // Polymorphic relations for Album and Playlist
+  albumId     String?
+  album       Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  playlistId  String?
+  playlist    Playlist? @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, albumId])
+  @@unique([userId, playlistId])
+  @@index([userId])
+  @@index([albumId])
+  @@index([playlistId])
+}
+
+model NotificationSetting {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 알림 설정
+  all           Boolean @default(true)
+  newAlbum      Boolean @default(true)
+  newPlaylist   Boolean @default(true)
+  comment       Boolean @default(true)
+  reply         Boolean @default(true)
+  like          Boolean @default(true)
+  follow        Boolean @default(true)
+  mention       Boolean @default(true)
+  album_tagged  Boolean @default(true)
+  playlist_tagged Boolean @default(true)
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// 트랙 활동 로그를 위한 모델 추가
+model TrackActivityLog {
+  id        String   @id @default(cuid())
+  trackId   String
+  type      String   // PLAY, LIKE 등
+  createdAt DateTime @default(now())
+  track     Track    @relation(fields: [trackId], references: [id])
+
+  @@index([trackId, type, createdAt])
+}
+
+model UserActivityHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+  
+  // 활동 타입 (PLAY, LIKE, FOLLOW 등)
+  type      String   
+
+  // 활동 대상 (Track, Album, Artist 등)
+  targetType String  
+  targetId   String
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 메타데이터 (재생 시간, 완료 여부 등)
+  metadata  Json?    
+
+  @@index([userId])
+  @@index([type])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+// 문의 상태 enum 추가
+enum InquiryStatus {
+  PENDING   // 대기중
+  IN_PROGRESS // 처리중
+  RESOLVED  // 해결됨
+  CLOSED    // 닫힘
+}
+
+// 문의 유형 enum 추가
+enum InquiryType {
+  ACCOUNT    // 계정 관련
+  CONTENT    // 콘텐츠 관련
+  COPYRIGHT  // 저작권 문제
+  TECHNICAL  // 기술적 문제
+  REPORT     // 신고하기
+  SUGGESTION // 제안하기
+  OTHER      // 기타 문의
+}
+
+// 문의 모델 추가
+model Inquiry {
+  id          String        @id @default(cuid())
+  type        InquiryType
+  title       String
+  content     String        @db.Text
+  status      InquiryStatus @default(PENDING)
+  attachmentUrl String?     // 첨부파일 URL 필드 추가
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // 문의자 정보
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 답변 관계
+  answers     InquiryAnswer[]
+
+  // 관리자 메모
+  adminNote   String?       @db.Text
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// 문의 답변 모델 추가
+model InquiryAnswer {
+  id          String    @id @default(cuid())
+  content     String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 문의 관계
+  inquiryId   String
+  inquiry     Inquiry   @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  // 답변 작성자 (관리자)
+  adminId     String
+  admin       User      @relation(fields: [adminId], references: [id])
+
+  @@index([inquiryId])
+  @@index([adminId])
+}

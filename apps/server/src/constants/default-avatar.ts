@@ -1,0 +1,1 @@
+export const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?background=random'; 

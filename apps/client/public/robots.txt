@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /auth/*
+Disallow: /settings/*
+Disallow: /inquiries/*
+
+# Allow legal pages
+Allow: /docs/terms
+Allow: /docs/privacy
+Allow: /docs/cookie
+Allow: /docs/youth
+Allow: /docs/about
+
+Sitemap: https://amp.com/sitemap.xml 
