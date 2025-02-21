@@ -12,12 +12,15 @@ import { Client } from '@elastic/elasticsearch';
     {
       provide: 'ELASTICSEARCH_CLIENT',
       useFactory: () => {
+        const node = process.env.ELASTICSEARCH_URL || 'http://amp-elasticsearch.internal:9200';
+        console.log('Elasticsearch URL:', node); // URL 확인용 로그
+
         return new Client({
-          node: process.env.ELASTICSEARCH_URL,
+          nodes: [node],
           auth: {
-            username: process.env.ELASTICSEARCH_USERNAME,
-            password: process.env.ELASTICSEARCH_PASSWORD,
-          },
+            username: process.env.ELASTICSEARCH_USERNAME || 'amp_elastic',
+            password: process.env.ELASTICSEARCH_PASSWORD || 'My$uperS3cure!Passw0rd'
+          }
         });
       },
     },
