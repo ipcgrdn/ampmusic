@@ -294,7 +294,7 @@ export class SearchService {
   }
 
   async initializeIndices() {
-    // return; // 주석 제거
+
     const indices = ['albums', 'tracks', 'playlists', 'users'];
 
     for (const index of indices) {
@@ -304,75 +304,18 @@ export class SearchService {
         await this.elasticsearchClient.indices.create({
           index,
           body: {
-            settings: {
-              analysis: {
-                analyzer: {
-                  korean: {
-                    type: 'custom',
-                    tokenizer: 'nori_tokenizer',
-                    filter: [
-                      'nori_readingform',
-                      'lowercase',
-                      'trim',
-                      'nori_part_of_speech'
-                    ]
-                  },
-                  ngram_analyzer: {
-                    type: 'custom',
-                    tokenizer: 'ngram_tokenizer',
-                    filter: ['lowercase', 'trim']
-                  }
-                },
-                tokenizer: {
-                  ngram_tokenizer: {
-                    type: 'ngram',
-                    min_gram: 1,
-                    max_gram: 2,
-                    token_chars: ['letter', 'digit']
-                  }
-                }
-              }
-            },
             mappings: {
-              dynamic: 'strict',
               properties: {
-                title: {
-                  type: 'text',
-                  analyzer: 'korean',
-                  fields: {
-                    keyword: { type: 'keyword' },
-                    ngram: { 
-                      type: 'text',
-                      analyzer: 'ngram_analyzer'
-                    },
-                    suggest: {
-                      type: 'completion',
-                      analyzer: 'korean'
-                    }
-                  }
-                },
-                description: {
-                  type: 'text',
-                  analyzer: 'korean',
-                  fields: {
-                    keyword: { type: 'keyword' }
-                  }
-                },
-                name: {
-                  type: 'text',
-                  analyzer: 'korean',
-                  fields: {
-                    keyword: { type: 'keyword' },
-                    suggest: {
-                      type: 'completion',
-                      analyzer: 'korean'
-                    }
-                  }
-                },
-                email: { type: 'keyword' },
+                title: { type: 'text' },
+                description: { type: 'text' },
+                name: { type: 'text' },
+                bio: { type: 'text' },
+                artistId: { type: 'keyword' },
                 albumId: { type: 'keyword' },
-                createdAt: { type: 'date' },
-                updatedAt: { type: 'date' },
+                userId: { type: 'keyword' },
+                email: { type: 'keyword' },
+                avatar: { type: 'keyword' },
+                isPublic: { type: 'boolean' },
                 plays: { type: 'long' }
               }
             }
@@ -545,91 +488,120 @@ export class SearchService {
 
     for (const index of indices) {
       const exists = await this.elasticsearchClient.indices.exists({ index });
-
+      
       if (exists) {
-        // 1. 기존 인덱스의 별칭 생성
-        await this.elasticsearchClient.indices.putAlias({
-          index,
-          name: `${index}_old`,
-        });
-
-        // 2. 새로운 인덱스 생성 (임시 이름)
         const tempIndex = `${index}_new`;
+        
         await this.elasticsearchClient.indices.create({
           index: tempIndex,
-          settings: {
-            analysis: {
-              analyzer: {
-                korean: {
-                  type: 'custom',
-                  tokenizer: 'nori_tokenizer',
-                  filter: ['nori_readingform', 'lowercase'],
+          body: {
+            settings: {
+              analysis: {
+                analyzer: {
+                  korean: {
+                    type: 'custom',
+                    tokenizer: 'nori_tokenizer',
+                    filter: ['nori_readingform', 'lowercase', 'trim'],
+                  },
+                  ngram_analyzer: {
+                    type: 'custom',
+                    tokenizer: 'ngram_tokenizer',
+                    filter: ['lowercase', 'trim'],
+                  },
+                },
+                tokenizer: {
+                  ngram_tokenizer: {
+                    type: 'ngram',
+                    min_gram: 1,
+                    max_gram: 2,
+                    token_chars: ['letter', 'digit'],
+                  },
                 },
               },
             },
           },
           mappings: {
             properties: {
+              // 공통 필드
+              id: { type: 'constant_keyword' },
+              createdAt: { type: 'date' },
+              updatedAt: { type: 'date' },
+              
+              // 제목/이름 관련 필드
               title: {
                 type: 'text',
-                analyzer: 'korean',
                 fields: {
-                  suggest: {
+                  raw: { type: 'constant_keyword' },
+                  ngram: { 
+                    type: 'text',
+                    analyzer: 'standard',
+                  },
+                  completion: {
                     type: 'completion',
-                    analyzer: 'korean',
-                    preserve_separators: true,
-                    preserve_position_increments: true,
-                    max_input_length: 50,
+                  },
+                },
+              },
+              name: {
+                type: 'text',
+                fields: {
+                  raw: { type: 'constant_keyword' },
+                  ngram: {
+                    type: 'text',
+                    analyzer: 'standard',
+                  },
+                  completion: {
+                    type: 'completion',
                   },
                 },
               },
               description: {
                 type: 'text',
-                analyzer: 'korean',
-              },
-              name: {
-                type: 'text',
-                analyzer: 'korean',
                 fields: {
-                  suggest: {
-                    type: 'completion',
-                    analyzer: 'korean',
-                    preserve_separators: true,
-                    preserve_position_increments: true,
-                    max_input_length: 50,
+                  raw: { type: 'constant_keyword' },
+                  ngram: {
+                    type: 'text',
+                    analyzer: 'standard',
                   },
                 },
               },
-              email: { type: 'keyword' },
-              albumId: { type: 'keyword' },
+              bio: {
+                type: 'text',
+              },
+              artist: {
+                type: 'text',
+                fields: {
+                  raw: { type: 'constant_keyword' },
+                },
+              },
+              artistId: { type: 'constant_keyword' },
+              album: {
+                type: 'text',
+                fields: {
+                  raw: { type: 'constant_keyword' },
+                },
+              },
+              albumId: { type: 'constant_keyword' },
+              email: { type: 'constant_keyword' },
+              userId: { type: 'constant_keyword' },
+              avatar: { type: 'constant_keyword' },
+              isPublic: { type: 'boolean' },
+              plays: { type: 'long' },
             },
           },
         });
 
-        // 3. 기존 데이터를 새 인덱스로 재색인
         await this.elasticsearchClient.reindex({
           source: { index },
           dest: { index: tempIndex },
         });
 
-        // 4. 기존 인덱스 삭제
         await this.elasticsearchClient.indices.delete({ index });
-
-        // 5. 새 인덱스 이름 변경
         await this.elasticsearchClient.indices.putAlias({
           index: tempIndex,
           name: index,
         });
-
-        // 6. 임시 인덱스 삭제
-        await this.elasticsearchClient.indices.delete({
-          index: tempIndex,
-        });
       }
     }
-
-    // 7. 데이터 재동기화
-    await this.syncData();
 
     return { message: '인덱스가 성공적으로 업데이트되었습니다.' };
   }
