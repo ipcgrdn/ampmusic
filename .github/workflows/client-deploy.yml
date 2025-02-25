@@ -47,7 +47,7 @@ jobs:
           git pull
           npm install
           npm run build
-          pm2 restart amp-client
+          pm2 restart amp-frontend
 
     # 보안 그룹에서 GitHub Actions IP 제거
     - name: Remove GitHub Actions IP from Security Group
