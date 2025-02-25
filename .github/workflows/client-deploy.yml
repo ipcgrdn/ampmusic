@@ -43,11 +43,11 @@ jobs:
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          cd ~/amp_music/apps/client
+          cd ~/amp/apps/client
           git pull
           npm install
           npm run build
-          pm2 restart client
+          pm2 restart amp-client
 
     # 보안 그룹에서 GitHub Actions IP 제거
     - name: Remove GitHub Actions IP from Security Group
