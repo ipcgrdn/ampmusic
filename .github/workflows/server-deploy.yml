@@ -14,12 +14,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # GitHub Actions IP 가져오기
+    - name: Get Public IP
+      id: ip
+      uses: haythem/public-ip@v1.3
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
+
+    # 보안 그룹에 GitHub Actions IP 추가
+    - name: Add GitHub Actions IP to Security Group
+      run: |
+        aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.BACKEND_SECURITY_GROUP_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32
 
     - name: Deploy to EC2
       uses: appleboy/ssh-action@master
@@ -56,3 +70,13 @@ jobs:
           # 헬스 체크
           sleep 10
           curl -f http://localhost:4000/health || exit 1
+
+    # 보안 그룹에서 GitHub Actions IP 제거
+    - name: Remove GitHub Actions IP from Security Group
+      if: always()
+      run: |
+        aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.BACKEND_SECURITY_GROUP_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32
