@@ -15,6 +15,8 @@ import { CommentModule } from './comment/comment.module';
 import { NotificationModule } from './notification/notification.module';
 import { RedisModule } from './redis/redis.module';
 import { InquiryModule } from './inquiry/inquiry.module';
+import { HealthModule } from './health/health.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -42,6 +44,7 @@ import { InquiryModule } from './inquiry/inquiry.module';
     
     RedisModule,
     InquiryModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [
