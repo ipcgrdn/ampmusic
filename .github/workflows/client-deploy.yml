@@ -45,6 +45,7 @@ jobs:
         script: |
           cd ~/amp/apps/client
           git pull
+          pm2 stop amp-frontend
           npm install
           npm run build
           pm2 restart amp-frontend
