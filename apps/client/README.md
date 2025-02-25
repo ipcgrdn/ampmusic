@@ -1,1 +1,1 @@
-client
+amp-client
