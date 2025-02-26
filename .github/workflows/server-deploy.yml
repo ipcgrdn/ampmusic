@@ -66,21 +66,28 @@ jobs:
             if [ $? -eq 0 ]; then
               echo "Deployment successful!"
               
-              # 헬스 체크
-              sleep 10
-              if ! curl -f http://localhost:4000/health; then
-                echo "Health check failed, rolling back..."
-                docker-compose down
-                
-                if [ ! -z "$CURRENT_IMAGE" ]; then
-                  docker run -d --network host --name amp_backend \
-                    -v $(pwd)/uploads:/app/uploads \
-                    -v $(pwd)/.env:/app/.env \
-                    --restart unless-stopped \
-                    $CURRENT_IMAGE
+              # 헬스 체크 수정
+              echo "Waiting for server to start..."
+              for i in {1..6}; do  
+                sleep 5
+                if curl -f http://localhost:4000/health; then
+                  echo "Health check passed!"
+                  exit 0
                 fi
-                exit 1
+                echo "Attempt $i: Health check failed, retrying..."
+              done
+              
+              echo "Health check failed after all attempts, rolling back..."
+              docker-compose down
+              
+              if [ ! -z "$CURRENT_IMAGE" ]; then
+                docker run -d --network host --name amp_backend \
+                  -v $(pwd)/uploads:/app/uploads \
+                  -v $(pwd)/.env:/app/.env \
+                  --restart unless-stopped \
+                  $CURRENT_IMAGE
               fi
+              exit 1
             else
               echo "Deployment failed!"
               exit 1

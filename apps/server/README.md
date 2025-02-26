@@ -1,1 +1,1 @@
-server
+amp-server
