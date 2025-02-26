@@ -18,21 +18,26 @@ export class AuthController {
   ) {}
 
   private setCookies(res: Response, tokens: Tokens) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieDomain = isProduction ? 'ampmusic.im' : undefined; // 개발 환경에서는 도메인 설정 안 함
+
     // Access Token 쿠키 설정
     res.cookie('access_token', tokens.accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
       path: '/',
+      ...(cookieDomain && { domain: cookieDomain }),
       maxAge: 24 * 60 * 60 * 1000, // 24시간
     });
 
     // Refresh Token 쿠키 설정
     res.cookie('refresh_token', tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
-      path: '/auth/refresh', // refresh 엔드포인트에서만 접근 가능
+      path: '/auth/refresh',
+      ...(cookieDomain && { domain: cookieDomain }),
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
     });
   }
@@ -50,9 +55,9 @@ export class AuthController {
       const { id, email } = req.user;
       const tokens = await this.authService.getTokens(id, email);
       await this.authService.updateRefreshToken(id, tokens.refreshToken);
-      
+
       this.setCookies(res, tokens);
-      
+
       // 프론트엔드 루트 페이지로 직접 리다이렉트
       res.redirect(this.configService.get('FRONTEND_URL'));
     } catch (error) {
@@ -69,10 +74,10 @@ export class AuthController {
   ) {
     try {
       const tokens = await this.authService.refreshTokens(userId, refreshToken);
-      
+
       // 새 토큰을 쿠키에 설정
       this.setCookies(res, tokens);
-      
+
       return { success: true };
     } catch (error) {
       // 리프레시 토큰이 유효하지 않은 경우 쿠키 제거
@@ -86,11 +91,11 @@ export class AuthController {
   @UseGuards(JwtGuard)
   async logout(@GetUser('id') userId: string, @Res() res: Response) {
     await this.authService.logout(userId);
-    
+
     // 쿠키 제거
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
-    
+
     return res.sendStatus(200);
   }
 
@@ -106,8 +111,8 @@ export class AuthController {
         name: true,
         avatar: true,
         // 필요한 다른 필드들도 여기에 추가
-      }
+      },
     });
     return fullUserData;
   }
-} 
+}
