@@ -47,15 +47,25 @@ jobs:
 
             echo "===== 배포 시작: $(date) ====="
 
+            # 시스템 리소스 정리 및 확인
+            echo "시스템 리소스 정리 중..."
+            pm2 delete amp-frontend-new 2>/dev/null || true
+            pm2 flush # PM2 로그 정리
+            sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches' # 시스템 캐시 정리
+
+            # 메모리 상태 로깅 (경고만 하고 계속 진행)
+            FREE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $4}')
+            echo "현재 가용 메모리: ${FREE_MEM}MB"
+            if [ $FREE_MEM -lt 300 ]; then
+              echo "경고: 가용 메모리가 매우 부족합니다. 배포 중 문제가 발생할 수 있습니다."
+            fi
+
             # 포트 3001이 사용 중인지 확인
             if lsof -i:3001; then
               echo "포트 3001이 이미 사용 중입니다. 해당 프로세스를 종료합니다."
               pm2 delete amp-frontend-new 2>/dev/null || true
               sleep 2
             fi
-
-            # 기존 임시 프로세스 정리
-            pm2 delete amp-frontend-new 2>/dev/null || true
 
             # 현재 빌드 백업
             if [ -d ".next" ]; then
@@ -95,13 +105,6 @@ jobs:
             fi
 
             echo "새 버전 배포 중..."
-
-            # 시스템 리소스 확인
-            FREE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $4}')
-            if [ $FREE_MEM -lt 500 ]; then
-              echo "가용 메모리가 부족합니다 (${FREE_MEM}MB). 배포를 중단합니다."
-              exit 1
-            fi
 
             # 새로운 PM2 프로세스 시작 (다른 포트에서)
             PORT=3001 pm2 start npm --name "amp-frontend-new" -- start

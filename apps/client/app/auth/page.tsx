@@ -135,7 +135,7 @@ export default function AuthPage() {
               >
                 개인정보 처리방침
               </a>
-              에 동의하게 됩니다.
+              에 동의하게 됩니다...
             </p>
           </div>
         </motion.div>
