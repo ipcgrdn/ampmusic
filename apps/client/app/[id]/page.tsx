@@ -108,8 +108,7 @@ export default function ProfilePage() {
     switch (activeTab) {
       /* 앨범 */
       case "albums":
-        return (
-          albums.length > 0 &&
+        return albums.length > 0 ? (
           albums.map((album) => (
             <Link
               key={album.id}
@@ -145,6 +144,10 @@ export default function ProfilePage() {
               </div>
             </Link>
           ))
+        ) : (
+          <div className="col-span-full text-center text-sm py-12 text-white/40">
+            앨범이 없습니다
+          </div>
         );
 
       /* 트랙 */
@@ -210,7 +213,7 @@ export default function ProfilePage() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12 text-white/40">
+                <div className="text-center text-sm py-12 text-white/40">
                   트랙이 없습니다
                 </div>
               )}
@@ -220,8 +223,7 @@ export default function ProfilePage() {
 
       /* 플레이리스트 */
       case "playlists":
-        return (
-          playlists.length > 0 &&
+        return playlists.length > 0 ? (
           playlists.map((playlist) => (
             <Link
               key={playlist.id}
@@ -267,6 +269,10 @@ export default function ProfilePage() {
               </div>
             </Link>
           ))
+        ) : (
+          <div className="col-span-full text-center text-sm py-12 text-white/40">
+            플레이리스트가 없습니다
+          </div>
         );
 
       default:
@@ -277,40 +283,60 @@ export default function ProfilePage() {
   return (
     <PageTransition>
       <div className="relative w-full bg-black min-h-screen">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#533483]/20 via-black to-black" />
-          <div className="absolute top-0 left-0 w-full h-[60vh] bg-gradient-to-br from-[#e6c200]/10 via-[#533483]/10 to-transparent" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000012_1px,transparent_1px),linear-gradient(to_bottom,#00000012_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
-        </div>
-
         <main className="relative">
           <div className="px-4 lg:px-8 pt-6 lg:pt-10 pb-6">
             <ProfileHeader userId={id as string} />
           </div>
-
-          <div className="px-4 lg:px-8 py-6 border-t border-b border-white/10">
+          <div className="px-4 lg:px-8 py-6">
             <div className="relative backdrop-blur-xl bg-white/5 rounded-2xl p-6 max-w-3xl mx-auto">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 pointer-events-none" />
               <div className="relative flex justify-around">
                 {[
-                  { label: "트랙", count: tracks.length },
-                  { label: "앨범", count: albums.length },
-                  { label: "플레이리스트", count: playlists.length },
+                  {
+                    label: "트랙",
+                    count: tracks.length,
+                    isClickable: false,
+                  },
+                  {
+                    label: "앨범",
+                    count: albums.length,
+                    isClickable: false,
+                  },
+                  {
+                    label: "플레이리스트",
+                    count: playlists.length,
+                    isClickable: false,
+                  },
                   {
                     label: "팔로워",
                     count: followCounts?.followers || 0,
                     onClick: () => setShowFollowers(true),
+                    isClickable: true,
                   },
                 ].map((stat, i) => (
                   <div
                     key={i}
-                    className="text-center group cursor-pointer"
+                    className={`text-center ${stat.isClickable ? "cursor-pointer" : ""}`}
                     onClick={stat.onClick}
                   >
-                    <div className="text-3xl font-bold bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent group-hover:from-[#e6c200] group-hover:to-[#533483] transition-all duration-300">
+                    <div
+                      className={`text-3xl font-bold bg-gradient-to-br 
+                        ${
+                          stat.isClickable
+                            ? "from-[#e6c200] to-[#533483] group-hover:from-white group-hover:to-white/60"
+                            : "from-white to-white/60 group-hover:from-[#e6c200] group-hover:to-[#533483]"
+                        } 
+                        bg-clip-text text-transparent transition-all duration-300`}
+                    >
                       <AnimatedNumber value={stat.count} />
                     </div>
-                    <div className="text-sm text-white/60 group-hover:text-white/80 transition-colors">
+                    <div
+                      className={`text-sm ${
+                        stat.isClickable
+                          ? "text-white/80 group-hover:text-white/60"
+                          : "text-white/60 group-hover:text-white/80"
+                      } transition-colors`}
+                    >
                       {stat.label}
                     </div>
                   </div>

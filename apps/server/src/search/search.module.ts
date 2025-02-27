@@ -13,7 +13,6 @@ import { Client } from '@elastic/elasticsearch';
       provide: 'ELASTICSEARCH_CLIENT',
       useFactory: () => {
         const node = process.env.ELASTICSEARCH_URL || 'http://127.0.0.1:9200';
-        console.log('Elasticsearch URL:', node);
 
         return new Client({
           node: node,

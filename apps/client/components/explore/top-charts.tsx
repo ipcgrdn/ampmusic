@@ -132,6 +132,16 @@ export function TopCharts() {
     );
   }
 
+  if (tracks.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16 px-4">
+        <p className="text-sm text-white/40 text-center">
+          현재 신규 발매된 앨범이 없습니다
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* 마지막 업데이트 시간 표시 */}

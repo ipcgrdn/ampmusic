@@ -34,7 +34,7 @@ export function FollowingUpdates() {
 
   if (!updates?.length) {
     return (
-      <div className="text-center text-white/60 py-8">
+      <div className="text-center text-sm text-white/60 py-8">
         팔로우한 유저들의 업데이트가 없습니다
       </div>
     );

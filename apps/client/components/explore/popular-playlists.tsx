@@ -42,6 +42,16 @@ export function PopularPlaylists() {
     );
   }
 
+  if (playlists.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16 px-4">
+        <p className="text-sm text-white/40 text-center">
+          현재 인기 플레이리스트가 없습니다
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">

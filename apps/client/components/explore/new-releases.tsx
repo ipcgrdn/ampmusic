@@ -59,6 +59,16 @@ export function NewReleases() {
     );
   }
 
+  if (albums.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16 px-4">
+        <p className="text-sm text-white/40 text-center">
+          현재 신규 발매된 앨범이 없습니다
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">

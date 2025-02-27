@@ -152,7 +152,7 @@ export default function LikesPage() {
 
     if (isEmpty) {
       return (
-        <div className="text-center text-white/60 py-8">
+        <div className="text-center text-sm text-white/60 py-8">
           좋아요한 {tabs.find(tab => tab.value === selectedTab)?.label}이(가) 없습니다.
         </div>
       );

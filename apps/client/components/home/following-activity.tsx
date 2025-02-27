@@ -145,7 +145,7 @@ export function FollowingActivity() {
 
   if (!activities?.length) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center text-sm py-12">
         <p className="text-white/60">팔로우한 유저들의 활동이 없습니다</p>
         <p className="text-sm text-white/40 mt-1">
           다른 유저들을 팔로우하고 그들의 음악 취향을 발견해보세요

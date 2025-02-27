@@ -131,7 +131,7 @@ export default function Home() {
           </motion.section>
 
           <div className="flex items-center justify-center">
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-white/50 text-center">
               <Link href="/docs/privacy" className="hover:underline">
                 개인정보처리방침
               </Link>{" "}
@@ -143,7 +143,7 @@ export default function Home() {
               <Link href="/docs/youth" className="hover:underline">
                 청소년보호정책
               </Link>{" "}
-              •
+              <br className="block lg:hidden" />
               <Link href="/docs/copyright" className="hover:underline">
                 저작권정책
               </Link>{" "}

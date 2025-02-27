@@ -111,7 +111,7 @@ export function SimilarUsersTracks() {
 
   if (!tracks?.length) {
     return (
-      <div className="text-center text-white/60 py-8">
+      <div className="text-center text-sm text-white/60 py-8">
         아직 추천할 트랙이 없습니다
       </div>
     );
