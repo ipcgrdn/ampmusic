@@ -1,11 +1,21 @@
 import type { NextConfig } from "next";
 
+// 빌드 타임스탬프 생성 (캐시 버스팅에 사용)
+const buildId = Date.now().toString();
+
 const nextConfig: NextConfig = {
   env: {
     API_URL:
       process.env.NODE_ENV === "production"
         ? "https://api.ampmusic.im"
         : "http://localhost:4000",
+    // 클라이언트에서 접근 가능한 빌드 ID 추가
+    BUILD_ID: buildId,
+  },
+
+  // 매 빌드마다 고유 ID 생성 (핵심 캐시 버스팅 기능)
+  generateBuildId: async () => {
+    return buildId;
   },
 
   // 법적 페이지의 정적 생성 설정 추가
@@ -16,15 +26,36 @@ const nextConfig: NextConfig = {
     return [];
   },
 
-  // 정적 페이지 생성 최적화
+  // 정적 페이지 생성 최적화 및 캐시 헤더 설정
   async headers() {
     return [
       {
+        // 모든 Next.js 정적 자산에 대한 캐시 제어
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        // 모든 페이지에 대한 기본 캐시 설정
+        source: "/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        // 법적 페이지 설정 - 캐시 시간 단축
         source: "/auth/terms",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=3600, stale-while-revalidate=86400",
+            value: "public, max-age=0, must-revalidate",
           },
         ],
       },
@@ -33,16 +64,19 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=3600, stale-while-revalidate=86400",
+            value: "public, max-age=0, must-revalidate",
           },
         ],
       },
     ];
   },
 
+  // 보안 및 성능 향상을 위한 추가 설정
+  poweredByHeader: false, // X-Powered-By 헤더 제거
+  reactStrictMode: true, // 엄격 모드 활성화
+
   images: {
     remotePatterns: [
-      // 기존 설정 유지
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",

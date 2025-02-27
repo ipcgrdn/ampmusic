@@ -57,8 +57,8 @@ jobs:
             rm -rf .next
             rm -rf node_modules/.cache
 
-            # 빌드 시도
-            if ! npm install && npm run build; then
+            # 빌드 시도 - 수정된 부분
+            if ! (npm install && npm run build); then
               echo "Build failed, rolling back..."
               if [ -d ".next_backup" ]; then
                 rm -rf .next
