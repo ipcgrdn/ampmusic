@@ -17,13 +17,20 @@ import { CreateAlbumDto } from './dto/create-album.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { extname } from 'path';
+import { S3Service } from '../utils/s3-upload.util';
 
 @Controller('albums')
 @UseGuards(JwtGuard)
 export class AlbumController {
-  constructor(private readonly albumService: AlbumService) {}
+  private readonly s3Service: S3Service;
+  private readonly isProduction: boolean;
+
+  constructor(private readonly albumService: AlbumService) {
+    this.s3Service = new S3Service();
+    this.isProduction = process.env.NODE_ENV === 'production';
+  }
 
   @Get('new-releases')
   async getNewReleases() {
@@ -78,16 +85,18 @@ export class AlbumController {
   @Post('upload/image')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/images',
-        filename: (_, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          return cb(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
+      storage: process.env.NODE_ENV === 'production' 
+        ? memoryStorage()
+        : diskStorage({
+            destination: './uploads/images',
+            filename: (_, file, cb) => {
+              const randomName = Array(32)
+                .fill(null)
+                .map(() => Math.round(Math.random() * 16).toString(16))
+                .join('');
+              return cb(null, `${randomName}${extname(file.originalname)}`);
+            },
+          }),
       fileFilter: (_, file, cb) => {
         if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
           return cb(
@@ -103,25 +112,30 @@ export class AlbumController {
     }),
   )
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (this.isProduction) {
+      return this.s3Service.uploadFile(file, 'images');
+    }
     return this.albumService.uploadImage(file);
   }
 
   @Post('upload/audio')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/audio',
-        filename: (req, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          console.log('Generating filename for:', file.originalname);
-          const filename = `${randomName}${extname(file.originalname)}`;
-          console.log('Generated filename:', filename);
-          return cb(null, filename);
-        },
-      }),
+      storage: process.env.NODE_ENV === 'production'
+        ? memoryStorage()
+        : diskStorage({
+            destination: './uploads/audio',
+            filename: (req, file, cb) => {
+              const randomName = Array(32)
+                .fill(null)
+                .map(() => Math.round(Math.random() * 16).toString(16))
+                .join('');
+              console.log('Generating filename for:', file.originalname);
+              const filename = `${randomName}${extname(file.originalname)}`;
+              console.log('Generated filename:', filename);
+              return cb(null, filename);
+            },
+          }),
       fileFilter: (_, file, cb) => {
         console.log('Checking file type:', file.mimetype);
         if (!file.mimetype.match(/^audio\/(mpeg|wav|flac|aac|ogg)$/)) {
@@ -140,6 +154,11 @@ export class AlbumController {
     }),
   )
   async uploadAudio(@UploadedFile() file: Express.Multer.File) {
+    if (this.isProduction) {
+      const result = await this.s3Service.uploadFile(file, 'audio');
+      const duration = await this.albumService.getAudioDuration(file);
+      return { ...result, duration };
+    }
     return this.albumService.uploadAudio(file);
   }
 

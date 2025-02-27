@@ -405,4 +405,25 @@ export class AlbumService {
       throw error;
     }
   }
+
+  async getAudioDuration(file: Express.Multer.File): Promise<number> {
+    try {
+      if (file.buffer) {
+        // 프로덕션 환경 (메모리에 있는 파일)
+        const tempPath = join(process.cwd(), 'temp', file.filename);
+        await fs.mkdir(join(process.cwd(), 'temp'), { recursive: true });
+        await fs.writeFile(tempPath, file.buffer);
+        const duration = await getAudioDurationInSeconds(tempPath);
+        await fs.unlink(tempPath);
+        return Math.round(duration);
+      } else {
+        // 개발 환경 (디스크에 있는 파일)
+        const duration = await getAudioDurationInSeconds(file.path);
+        return Math.round(duration);
+      }
+    } catch (error) {
+      console.error('Error getting audio duration:', error);
+      throw new BadRequestException('오디오 파일 처리 중 오류가 발생했습니다');
+    }
+  }
 }
