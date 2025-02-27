@@ -71,45 +71,89 @@ export class S3Service {
 
   private async processAudio(file: Express.Multer.File): Promise<{ buffer: Buffer; filename: string; duration: number }> {
     try {
-      // 임시 디렉토리 경로 수정
+      // 임시 디렉토리 경로 설정 (Docker 환경 고려)
       const tempDir = process.env.NODE_ENV === 'production'
-        ? '/var/www/amp-server/temp'
+        ? '/app/temp'
         : join(process.cwd(), 'temp');
 
-      await fs.mkdir(tempDir, { recursive: true });
+      console.log('Processing audio file:', {
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        tempDir
+      });
+
+      // 임시 디렉토리 생성 시도
+      try {
+        await fs.mkdir(tempDir, { recursive: true });
+        console.log('Temp directory created/verified:', tempDir);
+      } catch (mkdirError) {
+        console.error('Error creating temp directory:', mkdirError);
+        throw new Error('임시 디렉토리 생성 실패');
+      }
       
       const tempFileName = this.generateFileName(file.originalname);
       const tempInputPath = join(tempDir, `input-${tempFileName}`);
-      const tempOutputPath = join(tempDir, `output-${tempFileName}.aac`);
+      const tempOutputPath = join(tempDir, `output-${tempFileName}.m4a`);
+
+      console.log('Temp file paths:', {
+        input: tempInputPath,
+        output: tempOutputPath
+      });
 
       // 버퍼를 임시 파일로 저장
-      await fs.writeFile(tempInputPath, file.buffer);
+      try {
+        await fs.writeFile(tempInputPath, file.buffer);
+        console.log('Input file written successfully');
+      } catch (writeError) {
+        console.error('Error writing input file:', writeError);
+        throw new Error('입력 파일 저장 실패');
+      }
 
       // AAC 변환
-      await AudioConverter.convertToAAC(tempInputPath, tempDir);
+      try {
+        const outputFileName = await AudioConverter.convertToAAC(tempInputPath, tempDir);
+        console.log('Audio conversion completed:', outputFileName);
+        // 실제 출력 파일 경로 업데이트
+        const actualOutputPath = join(tempDir, outputFileName);
+        
+        // 변환된 파일 읽기 및 메타데이터 추출
+        let convertedBuffer: Buffer;
+        let duration: number;
 
-      // 변환된 파일 읽기
-      const convertedBuffer = await fs.readFile(tempOutputPath);
-      
-      // 메타데이터 추출
-      const duration = await getAudioDurationInSeconds(tempOutputPath);
+        try {
+          convertedBuffer = await fs.readFile(actualOutputPath);
+          duration = await getAudioDurationInSeconds(actualOutputPath);
+          console.log('Audio metadata extracted:', { duration });
+        } catch (readError) {
+          console.error('Error reading converted file:', readError);
+          throw new Error('변환된 파일 읽기 실패');
+        }
 
-      // 임시 파일 정리
-      await Promise.all([
-        fs.unlink(tempInputPath).catch(() => {}),
-        fs.unlink(tempOutputPath).catch(() => {}),
-      ]);
+        // 임시 파일 정리
+        try {
+          await Promise.all([
+            fs.unlink(tempInputPath).catch(e => console.warn('Failed to delete input temp file:', e)),
+            fs.unlink(actualOutputPath).catch(e => console.warn('Failed to delete output temp file:', e))
+          ]);
+          console.log('Temp files cleaned up');
+        } catch (cleanupError) {
+          console.warn('Error during cleanup:', cleanupError);
+        }
 
-      const filename = this.generateFileName(file.originalname, 'aac');
-
-      return {
-        buffer: convertedBuffer,
-        filename,
-        duration: Math.round(duration),
-      };
+        const filename = this.generateFileName(file.originalname, 'm4a');
+        return {
+          buffer: convertedBuffer,
+          filename,
+          duration: Math.round(duration),
+        };
+      } catch (conversionError) {
+        console.error('Error converting audio:', conversionError);
+        throw new Error('오디오 변환 실패');
+      }
     } catch (error) {
       console.error('Audio processing error:', error);
-      throw new BadRequestException('오디오 파일 처리 중 오류가 발생했습니다');
+      throw new BadRequestException(error instanceof Error ? error.message : '오디오 파일 처리 중 오류가 발생했습니다');
     }
   }
 
@@ -141,7 +185,7 @@ export class S3Service {
         Bucket: this.bucketName,
         Key: key,
         Body: processedResult.buffer,
-        ContentType: folder === 'audio' ? 'audio/aac' : 'image/webp',
+        ContentType: folder === 'audio' ? 'audio/mp4' : 'image/webp',
       });
 
       await this.s3Client.send(command);
