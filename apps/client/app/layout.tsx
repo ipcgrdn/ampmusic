@@ -62,7 +62,6 @@ export const metadata: Metadata = {
     icon: [{ url: "/favicon.ico" }],
     apple: [{ url: "/apple-icon.png" }],
   },
-  manifest: "/manifest.json",
   verification: {
     google: "google-site-verification=YOUR_CODE",
   },

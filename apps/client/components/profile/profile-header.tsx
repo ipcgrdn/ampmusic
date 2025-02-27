@@ -70,9 +70,9 @@ export function ProfileHeader({ userId }: { userId: string }) {
       const { data: updatedProfile } = await api.put(`/users/${userId}`, data);
       setProfile(updatedProfile);
       setIsEditing(false);
-      showToast("Profile updated successfully", "success");
+      showToast("프로필이 업데이트되었습니다", "success");
     } catch {
-      showToast("Failed to update profile", "error");
+      showToast("프로필 업데이트에 실패했습니다", "error");
     }
   };
 
@@ -87,7 +87,7 @@ export function ProfileHeader({ userId }: { userId: string }) {
   if (error || !profile) {
     return (
       <div className="p-8 text-center">
-        <h2 className="text-xl text-white/80">{error || "User not found"}</h2>
+        <h2 className="text-xl text-white/80">{error || "사용자를 찾을 수 없습니다"}</h2>
       </div>
     );
   }

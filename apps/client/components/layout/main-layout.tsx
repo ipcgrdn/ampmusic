@@ -9,12 +9,12 @@ import { useSocket } from '@/hooks/use-socket';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuth = pathname === "/auth";
+  const isAuthPath = pathname.startsWith("/auth");
 
   // Socket 연결 초기화
   useSocket();
 
-  if (isAuth) {
+  if (isAuthPath) {
     return children;
   }
 

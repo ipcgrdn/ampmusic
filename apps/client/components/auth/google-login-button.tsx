@@ -1,22 +1,52 @@
-'use client';
+"use client";
 
-import { IconBrandGoogle } from '@tabler/icons-react';
+import { IconLoader2 } from "@tabler/icons-react";
+import Image from "next/image";
+import { useState } from "react";
 
 export function GoogleLoginButton() {
-  const handleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // 현재 창에서 리다이렉트
+      window.location.assign(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`);
+    } catch (error) {
+      console.error("Login failed:", error);
+      setIsLoading(false);
+    }
   };
 
   return (
     <button
       onClick={handleLogin}
+      disabled={isLoading}
       className="w-full px-6 py-3 flex items-center justify-center gap-3 
-        bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl text-white/90
-        hover:bg-white/10 hover:border-white/20 transition-all duration-200
-        focus:outline-none focus:ring-2 focus:ring-[#ffd700]/20"
+        bg-white rounded-xl text-gray-500 
+        hover:bg-gray-50 hover:shadow-md
+        border border-gray-200
+        transition-all duration-200
+        focus:outline-none focus:ring-2 focus:ring-[#4285F4]/40
+        disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <IconBrandGoogle size={20} />
-      <span className="text-sm font-medium">Continue with Google</span>
+      {isLoading ? (
+        <IconLoader2 className="w-5 h-5 animate-spin" />
+      ) : (
+        <div className="relative w-5 h-5">
+          <Image
+            src="/google.svg"
+            alt="Google Logo"
+            fill
+            className="object-contain"
+          />
+        </div>
+      )}
+      <span className="text-sm font-medium text-gray-700">
+        {isLoading ? "로그인 중..." : "Continue with Google"}
+      </span>
     </button>
   );
-} 
+}

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { api, resetQueue } from '@/lib/axios';
-import { User, AuthContextType, AuthError } from '@/types/auth';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext, useState, useEffect } from "react";
+import { api, resetQueue } from "@/lib/axios";
+import { User, AuthContextType, AuthError } from "@/types/auth";
+import { useRouter, usePathname } from "next/navigation";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -13,6 +13,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<AuthError | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const clearError = () => setError(null);
 
@@ -27,19 +28,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // 인증 에러 처리 함수
   const handleAuthError = (error: any) => {
-    console.error('Auth error:', error);
+    console.error("Auth error:", error);
     resetAuthState();
     setError({
-      message: error?.response?.data?.message || 'Authentication failed',
-      code: error?.response?.data?.code || 'AUTH_ERROR'
+      message: error?.response?.data?.message || "Authentication failed",
+      code: error?.response?.data?.code || "AUTH_ERROR",
     });
-    router.push('/auth');
+
+    // auth 경로에서는 리다이렉션하지 않음
+    if (!pathname.startsWith("/auth")) {
+      router.push("/auth");
+    }
   };
 
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const { data } = await api.get('/auth/me');
+        // auth 경로에서는 사용자 정보를 로드하지 않음
+        if (pathname.startsWith("/auth")) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data } = await api.get("/auth/me");
         setUser(data);
         setIsError(false);
         setError(null);
@@ -51,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadUser();
-  }, [router]);
+  }, [router, pathname]);
 
   useEffect(() => {
     // 토큰 관련 에러 이벤트 리스너
@@ -62,47 +73,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 401 에러 이벤트 리스너
     const handleUnauthorized = () => {
       resetAuthState();
-      router.push('/auth');
+      router.push("/auth");
     };
 
-    window.addEventListener('tokenError', handleTokenError);
-    window.addEventListener('unauthorized', handleUnauthorized);
-    
+    window.addEventListener("tokenError", handleTokenError);
+    window.addEventListener("unauthorized", handleUnauthorized);
+
     return () => {
-      window.removeEventListener('tokenError', handleTokenError);
-      window.removeEventListener('unauthorized', handleUnauthorized);
+      window.removeEventListener("tokenError", handleTokenError);
+      window.removeEventListener("unauthorized", handleUnauthorized);
     };
   }, [router]);
 
   const login = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
+    window.location.assign(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`);
   };
 
   const handleLogout = async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post("/auth/logout");
       resetAuthState();
-      router.push('/auth');
+      router.push("/auth");
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
       setError({
-        message: 'Failed to logout',
-        code: 'AUTH_LOGOUT_ERROR'
+        message: "Failed to logout",
+        code: "AUTH_LOGOUT_ERROR",
       });
     }
   };
 
   return (
     <AuthContext
-      value={{ 
-        user, 
-        isLoading, 
-        isError, 
+      value={{
+        user,
+        isLoading,
+        isError,
         error,
         clearError,
-        login, 
+        login,
         logout: handleLogout,
-        
       }}
     >
       {children}
@@ -113,10 +123,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}; 
+};
 
 export const useIsAdmin = () => {
   const { user } = useAuth();
