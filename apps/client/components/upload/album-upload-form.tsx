@@ -166,6 +166,9 @@ export function AlbumUploadForm() {
               <p className="text-sm text-white/50">
                 고화질 이미지를 사용하는 것을 추천드려요
               </p>
+              <p className="text-xs text-white/50">
+                최대 5MB 제한, jpg/jpeg/png/webp 형식 지원
+              </p>
             </div>
             <div className="h-8 w-8 rounded-full bg-white/[0.05] flex items-center justify-center">
               <span className="text-white/70">1</span>
@@ -277,6 +280,9 @@ export function AlbumUploadForm() {
               <h3 className="text-lg font-semibold text-white/90">트랙 목록</h3>
               <p className="text-sm text-white/50">
                 앨범에 포함될 트랙들을 추가해주세요
+              </p>
+              <p className="text-xs text-white/50">
+                최대 20MB 제한, mp3/wav/flac/aac/ogg 형식 지원
               </p>
             </div>
             <div className="h-8 w-8 rounded-full bg-white/[0.05] flex items-center justify-center">

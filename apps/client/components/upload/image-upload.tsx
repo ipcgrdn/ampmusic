@@ -19,6 +19,12 @@ export function ImageUpload({ value, onChange, disabled, className }: ImageUploa
     const file = acceptedFiles[0];
     if (!file) return;
 
+    // 파일 크기 체크 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('이미지 크기가 5MB를 초과합니다.');
+      return;
+    }
+
     const previewUrl = URL.createObjectURL(file);
     setPreview(previewUrl);
     onChange(file);

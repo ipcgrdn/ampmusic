@@ -62,6 +62,11 @@ export function TrackUpload({ value, onChange, disabled }: TrackUploadProps) {
       const newTracks = await Promise.all(
         acceptedFiles.map(async (file, index) => {
           try {
+            // 파일 크기 체크 (20MB)
+            if (file.size > 20 * 1024 * 1024) {
+              throw new Error(`${file.name}의 크기가 20MB를 초과합니다.`);
+            }
+
             const duration = await getAudioDuration(file);
             return {
               file,
@@ -92,7 +97,7 @@ export function TrackUpload({ value, onChange, disabled }: TrackUploadProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'audio/*': ['.mp3', '.wav']
+      'audio/*': ['.mp3', '.wav', '.flac', '.aac', '.ogg']
     },
     multiple: true,
     disabled: disabled || isProcessing,
@@ -129,7 +134,7 @@ export function TrackUpload({ value, onChange, disabled }: TrackUploadProps) {
             {isDragActive
               ? "오디오 파일을 여기에 놓아주세요"
               : isProcessing
-                ? "오디오 파일 처리 중..."
+                ? "오디오 파일 처리 중... ⏳"
                 : "트랙 파일을 드래그하거나 클릭하여 업로드하세요"}
           </p>
         </div>

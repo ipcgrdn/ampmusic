@@ -19,7 +19,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage, memoryStorage } from 'multer';
 import { extname } from 'path';
-import { S3Service } from '../utils/s3-upload.util';
+import { S3Service, FILE_VALIDATION_RULES } from '../utils/s3-upload.util';
 
 @Controller('albums')
 @UseGuards(JwtGuard)
@@ -97,21 +97,22 @@ export class AlbumController {
               return cb(null, `${randomName}${extname(file.originalname)}`);
             },
           }),
+      limits: {
+        fileSize: FILE_VALIDATION_RULES.image.maxSize,
+      },
       fileFilter: (_, file, cb) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(
-            new BadRequestException('지원하지 않는 이미지 형식입니다'),
-            false,
-          );
+        if (!FILE_VALIDATION_RULES.image.allowedMimeTypes.includes(file.mimetype as 'image/jpeg' | 'image/png' | 'image/jpg' | 'image/webp')) {
+          return cb(new BadRequestException('지원하지 않는 이미지 형식입니다'), false);
         }
         cb(null, true);
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
       },
     }),
   )
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('파일이 없습니다.');
+    }
+
     if (this.isProduction) {
       return this.s3Service.uploadFile(file, 'images');
     }
@@ -125,39 +126,32 @@ export class AlbumController {
         ? memoryStorage()
         : diskStorage({
             destination: './uploads/audio',
-            filename: (req, file, cb) => {
+            filename: (_, file, cb) => {
               const randomName = Array(32)
                 .fill(null)
                 .map(() => Math.round(Math.random() * 16).toString(16))
                 .join('');
-              console.log('Generating filename for:', file.originalname);
-              const filename = `${randomName}${extname(file.originalname)}`;
-              console.log('Generated filename:', filename);
-              return cb(null, filename);
+              return cb(null, `${randomName}${extname(file.originalname)}`);
             },
           }),
-      fileFilter: (_, file, cb) => {
-        console.log('Checking file type:', file.mimetype);
-        if (!file.mimetype.match(/^audio\/(mpeg|wav|flac|aac|ogg)$/)) {
-          console.log('Invalid file type rejected:', file.mimetype);
-          return cb(
-            new BadRequestException('지원하지 않는 오디오 형식입니다'),
-            false,
-          );
-        }
-        console.log('File type accepted:', file.mimetype);
-        cb(null, true);
-      },
       limits: {
-        fileSize: 20 * 1024 * 1024, // 20MB
+        fileSize: FILE_VALIDATION_RULES.audio.maxSize,
+      },
+      fileFilter: (_, file, cb) => {
+        if (!FILE_VALIDATION_RULES.audio.allowedMimeTypes.includes(file.mimetype as 'audio/mpeg' | 'audio/wav' | 'audio/flac' | 'audio/aac' | 'audio/ogg')) {
+          return cb(new BadRequestException('지원하지 않는 오디오 형식입니다'), false);
+        }
+        cb(null, true);
       },
     }),
   )
   async uploadAudio(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('파일이 없습니다.');
+    }
+
     if (this.isProduction) {
-      const result = await this.s3Service.uploadFile(file, 'audio');
-      const duration = await this.albumService.getAudioDuration(file);
-      return { ...result, duration };
+      return this.s3Service.uploadFile(file, 'audio');
     }
     return this.albumService.uploadAudio(file);
   }

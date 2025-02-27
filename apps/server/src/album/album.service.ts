@@ -277,6 +277,7 @@ export class AlbumService {
       throw new BadRequestException('파일이 없습니다');
     }
 
+    // 이미지 최적화 처리
     const optimized = await sharp(file.path)
       .resize(800, 800, {
         fit: 'inside',
@@ -298,14 +299,6 @@ export class AlbumService {
     }
 
     try {
-      // 파일 확장자 검증
-      const allowedExtensions = ['.mp3', '.wav', '.flac', '.m4a', '.aac'];
-      const fileExt = extname(file.originalname).toLowerCase();
-
-      if (!allowedExtensions.includes(fileExt)) {
-        throw new BadRequestException('지원하지 않는 오디오 형식입니다');
-      }
-
       // AAC 변환
       const outputDir = join(process.cwd(), 'uploads', 'audio');
       const convertedFileName = await AudioConverter.convertToAAC(
