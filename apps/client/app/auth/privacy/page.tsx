@@ -21,7 +21,13 @@ export default function PublicPrivacyPage() {
       <div className="relative z-10 max-w-4xl mx-auto p-6 md:p-8">
         <div className="flex items-center gap-4 mb-8">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              if (document.referrer.includes(window.location.hostname)) {
+                router.back();
+              } else {
+                router.push("/auth");
+              }
+            }}
             className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
           >
             <IconArrowLeft className="w-5 h-5" />

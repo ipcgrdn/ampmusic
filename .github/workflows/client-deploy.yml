@@ -53,6 +53,10 @@ jobs:
             git pull
             pm2 stop amp-frontend
 
+            # Next.js 캐시 완전 삭제
+            rm -rf .next
+            rm -rf node_modules/.cache
+
             # 빌드 시도
             if ! npm install && npm run build; then
               echo "Build failed, rolling back..."
@@ -67,6 +71,7 @@ jobs:
             # 백업 제거
             rm -rf .next_backup
 
+            # PM2 재시작
             pm2 restart amp-frontend
 
       # 보안 그룹에서 GitHub Actions IP 제거

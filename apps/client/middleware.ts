@@ -5,16 +5,19 @@ export function middleware(request: NextRequest) {
   // 현재 요청의 경로
   const path = request.nextUrl.pathname;
 
-  // 공개 경로 (인증 불필요)
-  const isPublicLegalPath = path === "/auth/privacy" || path === "/auth/terms";
+  // 법적 페이지는 항상 먼저 처리하여 접근을 보장
+  if (path === "/auth/privacy" || path === "/auth/terms") {
+    return NextResponse.next();
+  }
+
+  // 로그인 페이지 확인
   const isLoginPath = path === "/auth";
-  const isPublicPath = isPublicLegalPath || isLoginPath;
 
   // access_token 쿠키 확인
   const token = request.cookies.get("access_token")?.value;
 
   // 인증되지 않은 사용자가 보호된 경로에 접근하려는 경우
-  if (!token && !isPublicPath) {
+  if (!token && !isLoginPath) {
     const url = new URL("/auth", request.url);
     return NextResponse.redirect(url);
   }
