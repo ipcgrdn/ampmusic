@@ -19,7 +19,7 @@ export class AuthController {
 
   private setCookies(res: Response, tokens: Tokens) {
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieDomain = isProduction ? '.ampmusic.im' : undefined; // 개발 환경에서는 도메인 설정 안 함
+    const cookieDomain = isProduction ? '.ampmusic.im' : undefined;
 
     // Access Token 쿠키 설정
     res.cookie('access_token', tokens.accessToken, {
@@ -39,6 +39,38 @@ export class AuthController {
       path: '/auth/refresh',
       domain: cookieDomain,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    });
+  }
+
+  private clearAllCookies(res: Response) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieDomain = isProduction ? '.ampmusic.im' : undefined;
+
+    // Access Token 쿠키 제거
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+      domain: cookieDomain,
+    });
+
+    // Refresh Token 쿠키 제거
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/auth/refresh',
+      domain: cookieDomain,
+    });
+
+    // CSRF 토큰 쿠키 제거
+    res.clearCookie('XSRF-TOKEN', {
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+      domain: cookieDomain,
     });
   }
 
@@ -74,15 +106,10 @@ export class AuthController {
   ) {
     try {
       const tokens = await this.authService.refreshTokens(userId, refreshToken);
-
-      // 새 토큰을 쿠키에 설정
       this.setCookies(res, tokens);
-
       return { success: true };
     } catch (error) {
-      // 리프레시 토큰이 유효하지 않은 경우 쿠키 제거
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token');
+      this.clearAllCookies(res);
       throw error;
     }
   }
@@ -91,18 +118,13 @@ export class AuthController {
   @UseGuards(JwtGuard)
   async logout(@GetUser('id') userId: string, @Res() res: Response) {
     await this.authService.logout(userId);
-
-    // 쿠키 제거
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
-
+    this.clearAllCookies(res);
     return res.sendStatus(200);
   }
 
   @Get('me')
   @UseGuards(JwtGuard)
   async getMe(@GetUser() user) {
-    // 전체 사용자 정보를 가져오기 위해 Prisma를 사용
     const fullUserData = await this.prisma.user.findUnique({
       where: { id: user.id },
       select: {
@@ -110,7 +132,6 @@ export class AuthController {
         email: true,
         name: true,
         avatar: true,
-        // 필요한 다른 필드들도 여기에 추가
       },
     });
     return fullUserData;

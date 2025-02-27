@@ -38,42 +38,49 @@ async function bootstrap() {
   // CSRF 보호
   app.use(cookieParser());
   app.use((req: Request, res: Response, next: NextFunction) => {
-    // /search 경로는 CSRF 검사를 건너뜀
     if (req.path.startsWith('/search')) {
       next();
       return;
     }
 
-    // 다른 경로들은 CSRF 검사 수행
+    // 프로덕션 환경에서만 도메인 설정
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
+      httpOnly: true,
+      sameSite: 'lax' as const,
+      secure: isProduction,
+      domain: isProduction ? '.ampmusic.im' : undefined,
+    };
+
     csrf({
-      cookie: {
-        key: '_csrf', // csrf 쿠키 이름 명시
-        httpOnly: true, // 서버 측에서만 사용하는 쿠키
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        domain:
-          process.env.NODE_ENV === 'production' ? '.ampmusic.im' : undefined, // API 서버 도메인으로 제한
-      },
+      cookie: cookieOptions,
       ignoreMethods: ['GET', 'HEAD', 'OPTIONS'],
     })(req, res, next);
   });
 
   // CSRF 토큰을 응답 헤더에 포함
   app.use((req: Request, res: Response, next: NextFunction) => {
-    // /search 경로는 CSRF 토큰 생성을 건너뜀
     if (req.path.startsWith('/search')) {
       next();
       return;
     }
 
-    // csrfToken 함수가 있는 경우에만 토큰 생성
+    // 기존 XSRF-TOKEN 쿠키가 있다면 제거
+    if (req.cookies['XSRF-TOKEN']) {
+      res.clearCookie('XSRF-TOKEN', {
+        domain: 'api.ampmusic.im',
+        path: '/',
+      });
+    }
+
     if (req.csrfToken) {
+      const isProduction = process.env.NODE_ENV === 'production';
       res.cookie('XSRF-TOKEN', req.csrfToken(), {
         httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         sameSite: 'lax',
-        domain:
-          process.env.NODE_ENV === 'production' ? '.ampmusic.im' : undefined, // 루트 도메인 사용
+        path: '/',
+        domain: isProduction ? '.ampmusic.im' : undefined,
       });
     }
     next();
