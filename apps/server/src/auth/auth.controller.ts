@@ -19,7 +19,7 @@ export class AuthController {
 
   private setCookies(res: Response, tokens: Tokens) {
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieDomain = isProduction ? 'ampmusic.im' : undefined; // 개발 환경에서는 도메인 설정 안 함
+    const cookieDomain = isProduction ? '.ampmusic.im' : undefined; // 개발 환경에서는 도메인 설정 안 함
 
     // Access Token 쿠키 설정
     res.cookie('access_token', tokens.accessToken, {
@@ -27,7 +27,7 @@ export class AuthController {
       secure: isProduction,
       sameSite: 'lax',
       path: '/',
-      ...(cookieDomain && { domain: cookieDomain }),
+      domain: cookieDomain,
       maxAge: 24 * 60 * 60 * 1000, // 24시간
     });
 
@@ -37,7 +37,7 @@ export class AuthController {
       secure: isProduction,
       sameSite: 'lax',
       path: '/auth/refresh',
-      ...(cookieDomain && { domain: cookieDomain }),
+      domain: cookieDomain,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
     });
   }
