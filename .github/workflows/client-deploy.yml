@@ -45,34 +45,111 @@ jobs:
           script: |
             cd ~/amp/apps/client
 
+            echo "===== 배포 시작: $(date) ====="
+
+            # 포트 3001이 사용 중인지 확인
+            if lsof -i:3001; then
+              echo "포트 3001이 이미 사용 중입니다. 해당 프로세스를 종료합니다."
+              pm2 delete amp-frontend-new 2>/dev/null || true
+              sleep 2
+            fi
+
+            # 기존 임시 프로세스 정리
+            pm2 delete amp-frontend-new 2>/dev/null || true
+
             # 현재 빌드 백업
             if [ -d ".next" ]; then
+              echo "현재 빌드 백업 중..."
+              rm -rf .next_backup
               cp -r .next .next_backup
             fi
 
+            # 최신 코드 가져오기
+            echo "최신 코드 가져오는 중..."
             git pull
-            pm2 stop amp-frontend
 
             # Next.js 캐시 완전 삭제
+            echo "캐시 삭제 중..."
             rm -rf .next
             rm -rf node_modules/.cache
 
-            # 빌드 시도 - 수정된 부분
-            if ! (npm install && npm run build); then
-              echo "Build failed, rolling back..."
+            # 빌드 시도
+            echo "의존성 설치 중..."
+            if ! npm install; then
+              echo "npm install 실패, 롤백 수행 중..."
               if [ -d ".next_backup" ]; then
                 rm -rf .next
                 mv .next_backup .next
               fi
-              pm2 restart amp-frontend
               exit 1
             fi
 
-            # 백업 제거
-            rm -rf .next_backup
+            echo "Next.js 빌드 중..."
+            if ! npm run build; then
+              echo "빌드 실패, 롤백 수행 중..."
+              if [ -d ".next_backup" ]; then
+                rm -rf .next
+                mv .next_backup .next
+              fi
+              exit 1
+            fi
 
-            # PM2 재시작
+            echo "새 버전 배포 중..."
+
+            # 시스템 리소스 확인
+            FREE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $4}')
+            if [ $FREE_MEM -lt 500 ]; then
+              echo "가용 메모리가 부족합니다 (${FREE_MEM}MB). 배포를 중단합니다."
+              exit 1
+            fi
+
+            # 새로운 PM2 프로세스 시작 (다른 포트에서)
+            PORT=3001 pm2 start npm --name "amp-frontend-new" -- start
+
+            # 새 버전이 정상적으로 시작되었는지 확인
+            echo "새 버전 상태 확인 중..."
+            RETRY_COUNT=0
+            MAX_RETRIES=3
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              sleep 5
+              if curl -s http://localhost:3001 > /dev/null; then
+                echo "새 버전 정상 작동 확인"
+                
+                # 기존 프로세스 중지 및 새 프로세스 전환
+                echo "프로세스 전환 중..."
+                pm2 delete amp-frontend 2>/dev/null || true
+                pm2 delete amp-frontend-new
+                pm2 start npm --name "amp-frontend" -- start
+                
+                # 백업 제거
+                rm -rf .next_backup
+                
+                echo "===== 배포 완료: $(date) ====="
+                exit 0
+              fi
+              
+              RETRY_COUNT=$((RETRY_COUNT+1))
+              echo "재시도 중... ($RETRY_COUNT/$MAX_RETRIES)"
+            done
+
+            echo "새 버전 시작 실패, 롤백 수행 중..."
+
+            # 새 프로세스 제거
+            pm2 delete amp-frontend-new 2>/dev/null || true
+
+            # 이전 버전 복구
+            if [ -d ".next_backup" ]; then
+              rm -rf .next
+              mv .next_backup .next
+              echo "이전 버전으로 복구 완료"
+            fi
+
+            # 기존 프로세스 재시작
             pm2 restart amp-frontend
+
+            echo "===== 롤백 완료: $(date) ====="
+            exit 1
 
       # 보안 그룹에서 GitHub Actions IP 제거
       - name: Remove GitHub Actions IP from Security Group
