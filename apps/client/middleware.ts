@@ -6,7 +6,9 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // 공개 경로 (인증 불필요)
-  const isPublicPath = path === "/auth" || path.startsWith("/auth/");
+  const isPublicLegalPath = path === "/auth/privacy" || path === "/auth/terms";
+  const isLoginPath = path === "/auth";
+  const isPublicPath = isPublicLegalPath || isLoginPath;
 
   // access_token 쿠키 확인
   const token = request.cookies.get("access_token")?.value;

@@ -86,7 +86,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const login = () => {
-    window.location.assign(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`);
+    // 팝업 크기 설정
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    // 팝업 창 열기
+    const popup = window.open(
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/google`,
+      'Google Login',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    // 팝업 창 모니터링
+    const checkPopup = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(checkPopup);
+        // 팝업이 닫힌 후 사용자 정보 새로고침
+        router.refresh();
+      }
+    }, 1000);
   };
 
   const handleLogout = async () => {
