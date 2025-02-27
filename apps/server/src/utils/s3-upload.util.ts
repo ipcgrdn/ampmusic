@@ -71,11 +71,16 @@ export class S3Service {
 
   private async processAudio(file: Express.Multer.File): Promise<{ buffer: Buffer; filename: string; duration: number }> {
     try {
-      // 임시 파일 생성
-      const tempDir = join(process.cwd(), 'temp');
+      // 임시 디렉토리 경로 수정
+      const tempDir = process.env.NODE_ENV === 'production'
+        ? '/var/www/amp-server/temp'
+        : join(process.cwd(), 'temp');
+
       await fs.mkdir(tempDir, { recursive: true });
-      const tempInputPath = join(tempDir, `input-${file.originalname}`);
-      const tempOutputPath = join(tempDir, `output-${file.originalname}.aac`);
+      
+      const tempFileName = this.generateFileName(file.originalname);
+      const tempInputPath = join(tempDir, `input-${tempFileName}`);
+      const tempOutputPath = join(tempDir, `output-${tempFileName}.aac`);
 
       // 버퍼를 임시 파일로 저장
       await fs.writeFile(tempInputPath, file.buffer);
@@ -91,8 +96,8 @@ export class S3Service {
 
       // 임시 파일 정리
       await Promise.all([
-        fs.unlink(tempInputPath),
-        fs.unlink(tempOutputPath),
+        fs.unlink(tempInputPath).catch(() => {}),
+        fs.unlink(tempOutputPath).catch(() => {}),
       ]);
 
       const filename = this.generateFileName(file.originalname, 'aac');

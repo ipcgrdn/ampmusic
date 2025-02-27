@@ -64,7 +64,14 @@ export function TrackUpload({ value, onChange, disabled }: TrackUploadProps) {
           try {
             // 파일 크기 체크 (20MB)
             if (file.size > 20 * 1024 * 1024) {
-              throw new Error(`${file.name}의 크기가 20MB를 초과합니다.`);
+              throw new Error(`${file.name}의 크기가 20MB를 초과합니다. 파일을 압축하거나 더 작은 파일을 선택해주세요.`);
+            }
+
+            // 파일 형식 체크
+            const fileType = file.type;
+            const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/flac', 'audio/aac', 'audio/ogg'];
+            if (!allowedTypes.includes(fileType)) {
+              throw new Error(`${file.name}의 형식(${fileType})이 지원되지 않습니다. 지원되는 형식: MP3, WAV, FLAC, AAC, OGG`);
             }
 
             const duration = await getAudioDuration(file);
