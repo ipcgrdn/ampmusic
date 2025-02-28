@@ -103,6 +103,11 @@ const nextConfig: NextConfig = {
         port: "4000",
         pathname: "/uploads/images/**",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.ampmusic.im",
+        pathname: "/**",
+      },
     ],
     deviceSizes: [640, 768, 1024, 1280, 1536],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
