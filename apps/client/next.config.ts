@@ -108,7 +108,13 @@ const nextConfig: NextConfig = {
         hostname: "cdn.ampmusic.im",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "api.ampmusic.im",
+        pathname: "/**",
+      }
     ],
+    domains: ["cdn.ampmusic.im", "api.ampmusic.im"],  // 추가적인 보안을 위한 도메인 허용 목록
     deviceSizes: [640, 768, 1024, 1280, 1536],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     formats: ["image/webp"],

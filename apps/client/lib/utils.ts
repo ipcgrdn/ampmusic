@@ -59,7 +59,12 @@ export function getImageUrl(path: string): string {
     return path;
   }
   
-  // 상대 경로인 경우 서버 URL과 결합
+  // 프로덕션 환경에서는 CDN URL 사용
+  if (process.env.NODE_ENV === 'production') {
+    return `https://cdn.ampmusic.im${path}`;
+  }
+  
+  // 개발 환경에서는 API 서버 URL 사용
   return `${process.env.NEXT_PUBLIC_API_URL}${path}`;
 }
 

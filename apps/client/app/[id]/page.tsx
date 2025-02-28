@@ -118,7 +118,7 @@ export default function ProfilePage() {
               <div className="aspect-square bg-gradient-to-br from-white/5 to-transparent relative">
                 {album.coverImage && (
                   <Image
-                    src={`${process.env.NEXT_PUBLIC_API_URL}${album.coverImage}`}
+                    src={getImageUrl(album.coverImage)}
                     alt={album.title}
                     fill
                     className="object-cover"
