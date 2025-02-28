@@ -1,8 +1,8 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 // 날짜 포맷팅 (예: "2024년 3월 15일")
@@ -31,22 +31,22 @@ export function formatDate(dateString: string): string {
 export function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 // 긴 시간 포맷팅 (예: "1시간 23분")
 export function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 // 긴 시간 포맷팅 (예: "1시간 23분")
 export function formatDurationLong(seconds: number) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  
+
   if (hours > 0) {
     return `${hours}시간 ${minutes}분`;
   }
@@ -54,31 +54,23 @@ export function formatDurationLong(seconds: number) {
 }
 
 export function getImageUrl(path: string): string {
-  console.log('getImageUrl input path:', path);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
-  
   if (!path) {
-    console.log('Path is empty or undefined');
-    return '';
+    return "";
   }
-  
+
   // path가 이미 완전한 URL인 경우 그대로 반환
-  if (path.startsWith('http')) {
-    console.log('Returning original URL:', path);
+  if (path.startsWith("http")) {
     return path;
   }
-  
+
   // 프로덕션 환경에서는 CDN URL 사용
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === "production") {
     const cdnUrl = `https://cdn.ampmusic.im${path}`;
-    console.log('Returning CDN URL:', cdnUrl);
     return cdnUrl;
   }
-  
+
   // 개발 환경에서는 API 서버 URL 사용
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}${path}`;
-  console.log('Returning API URL:', apiUrl);
   return apiUrl;
 }
 

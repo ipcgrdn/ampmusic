@@ -190,8 +190,11 @@ export class S3Service {
 
       await this.s3Client.send(command);
 
+      // CloudFront 도메인이 설정되지 않은 경우 기본값 사용
+      const cloudFrontDomain = process.env.AWS_CLOUD_FRONT_DOMAIN || 'cdn.ampmusic.im';
+
       return {
-        url: `https://${process.env.AWS_CLOUD_FRONT_DOMAIN}/${key}`,
+        url: `https://${cloudFrontDomain}/${key}`,
         ...(processedResult.duration && { duration: processedResult.duration }),
       };
     } catch (error) {

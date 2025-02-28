@@ -53,11 +53,10 @@ export default function ProfilePage() {
       try {
         const albumData = await getUserAlbums(id as string);
         setAlbums(albumData);
-        console.log('albumData', albumData);
 
         const trackData = await getUserTracks(id as string);
         setTracks(trackData);
-        console.log('trackData', trackData);
+
         const playlistData = await getUserPlaylists(id as string);
         setPlaylists(playlistData);
       } catch (error) {
