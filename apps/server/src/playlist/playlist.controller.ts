@@ -20,14 +20,21 @@ import { JwtGuard } from '../auth/guards/jwt.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { AddTrackDto } from './dto/add-track.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { extname } from 'path';
 import { User } from '@prisma/client';
+import { S3Service, FILE_VALIDATION_RULES } from '../utils/s3-upload.util';
 
 @Controller('playlists')
 @UseGuards(JwtGuard)
 export class PlaylistController {
-  constructor(private readonly playlistService: PlaylistService) {}
+  private readonly s3Service: S3Service;
+  private readonly isProduction: boolean;
+
+  constructor(private readonly playlistService: PlaylistService) {
+    this.s3Service = new S3Service();
+    this.isProduction = process.env.NODE_ENV === 'production';
+  }
 
   @Get('popular')
   getPopularPlaylists() {
@@ -117,28 +124,37 @@ export class PlaylistController {
   @Post('upload/image')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/images',
-        filename: (req, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          return cb(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
+      storage: process.env.NODE_ENV === 'production'
+        ? memoryStorage()
+        : diskStorage({
+            destination: './uploads/images',
+            filename: (_, file, cb) => {
+              const randomName = Array(32)
+                .fill(null)
+                .map(() => Math.round(Math.random() * 16).toString(16))
+                .join('');
+              return cb(null, `${randomName}${extname(file.originalname)}`);
+            },
+          }),
+      limits: {
+        fileSize: FILE_VALIDATION_RULES.image.maxSize,
+      },
+      fileFilter: (_, file, cb) => {
+        if (!FILE_VALIDATION_RULES.image.allowedMimeTypes.includes(file.mimetype as 'image/jpeg' | 'image/png' | 'image/jpg' | 'image/webp')) {
           return cb(new BadRequestException('지원하지 않는 이미지 형식입니다'), false);
         }
         cb(null, true);
       },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
     }),
   )
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('파일이 없습니다.');
+    }
+
+    if (this.isProduction) {
+      return this.s3Service.uploadFile(file, 'images');
+    }
     return this.playlistService.uploadImage(file);
   }
 

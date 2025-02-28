@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { getAlbum } from "@/lib/api/album";
 import { Album, Track } from "@/types/album";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, getImageUrl } from "@/lib/utils";
 import { PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -31,8 +31,6 @@ import {
 import { ShareButton } from "@/components/common/ShareButton";
 import { TaggedUserList } from "@/components/tag/tagged-user-list";
 import { User } from "@/types/auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export default function AlbumPage() {
   const { id } = useParams();
@@ -182,11 +180,7 @@ export default function AlbumPage() {
           {/* Background Image with Blur */}
           <div className="absolute inset-0">
             <Image
-              src={
-                album.coverImage
-                  ? `${API_URL}${album.coverImage}`
-                  : "/images/logo.png"
-              }
+              src={getImageUrl(album.coverImage)}
               alt={album.title}
               fill
               className="object-cover blur-sm opacity-50"
@@ -200,11 +194,7 @@ export default function AlbumPage() {
               {/* Album Cover */}
               <div className="relative aspect-square w-48 md:w-64 rounded-lg overflow-hidden shadow-2xl">
                 <Image
-                  src={
-                    album.coverImage
-                      ? `${API_URL}${album.coverImage}`
-                      : "/images/logo.png"
-                  }
+                  src={getImageUrl(album.coverImage)}
                   alt={album.title}
                   fill
                   className="object-cover"

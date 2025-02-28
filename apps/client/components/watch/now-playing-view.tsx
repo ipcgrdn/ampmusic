@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
+import { getImageUrl } from "@/lib/utils";
 export function NowPlayingView() {
   const { currentTrack } = usePlayerStore();
   const [showLyrics, setShowLyrics] = useState(false);
@@ -124,7 +124,7 @@ export function NowPlayingView() {
                     className="relative w-full h-full"
                   >
                     <Image
-                      src={`${process.env.NEXT_PUBLIC_API_URL}${currentTrack.album?.coverImage}`}
+                      src={getImageUrl(currentTrack.album?.coverImage || "")}
                       alt={currentTrack.title}
                       fill
                       className="object-cover transition-transform duration-700 group-hover:scale-105"
@@ -190,7 +190,7 @@ export function NowPlayingView() {
           <div className="relative w-full h-full flex items-center justify-center bg-black/90">
             <div className="relative h-full aspect-square">
               <Image
-                src={`${process.env.NEXT_PUBLIC_API_URL}${currentTrack.album?.coverImage}`}
+                src={getImageUrl(currentTrack.album?.coverImage || "")}
                 alt={currentTrack.title}
                 fill
                 className="object-contain"

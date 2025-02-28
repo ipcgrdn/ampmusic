@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { IconDisc, IconPlaylist, IconChevronDown } from "@tabler/icons-react";
 import { useState } from "react";
+import { getImageUrl } from "@/lib/utils";
 
 export function FollowingUpdates() {
   const [displayCount, setDisplayCount] = useState(5);
@@ -56,7 +57,7 @@ export function FollowingUpdates() {
             <div className="flex gap-4 p-4">
               <div className="relative w-20 h-20 rounded-lg overflow-hidden">
                 <Image
-                  src={`${process.env.NEXT_PUBLIC_API_URL}${update.item.coverImage}`}
+                  src={getImageUrl(update.item.coverImage)}
                   alt={update.item.title}
                   fill
                   className="object-cover"

@@ -19,6 +19,7 @@ import { Track } from "@/types/album";
 import { Playlist } from "@/types/playlist";
 import { useAuth } from "@/context/auth-context";
 import { addTrackToPlaylist, getUserPlaylists } from "@/lib/api/playlist";
+import { getImageUrl } from "@/lib/utils";
 
 interface LikeActivity {
   id: string;
@@ -54,26 +55,26 @@ const convertToTrack = (activity: LikeActivity): Track => ({
   title: activity.track.title,
   albumId: activity.track.album.id,
   artistId: activity.track.album.artist.id,
-  album:{
+  album: {
     id: activity.track.album.id,
     title: activity.track.album.title,
     coverImage: activity.track.album.coverImage,
     artist: {
       id: activity.track.album.artist.id,
       name: activity.track.album.artist.name,
-      email: '',
-      image: '',
+      email: "",
+      image: "",
     },
-    description: '',
-    releaseDate: '',
-    artistId: '',
+    description: "",
+    releaseDate: "",
+    artistId: "",
     tracks: [],
   },
   artist: {
     id: activity.track.album.artist.id,
     name: activity.track.album.artist.name,
-    email: '',
-    image: '',
+    email: "",
+    image: "",
   },
   duration: 0,
   audioUrl: activity.track.trackUrl,
@@ -90,7 +91,7 @@ export function FollowingLikes() {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState(false);
   const { showToast } = useToast();
-  
+
   const { play } = usePlayerStore();
   const [visibleCount, setVisibleCount] = useState(5);
 
@@ -159,7 +160,7 @@ export function FollowingLikes() {
     try {
       // 트랙 상세정보 가져오기
       const trackDetails = await getTrackById(activity.track.id);
-      
+
       // 트랙 재생
       play({
         ...trackDetails,
@@ -169,10 +170,10 @@ export function FollowingLikes() {
         artist: {
           id: trackDetails.album.artist.id,
           name: trackDetails.album.artist.name,
-        }
+        },
       });
     } catch (error) {
-      console.error('트랙 정보를 가져오는데 실패했습니다:', error);
+      console.error("트랙 정보를 가져오는데 실패했습니다:", error);
       // 에러 처리 (예: 토스트 메시지 표시)
     }
   };
@@ -193,13 +194,13 @@ export function FollowingLikes() {
             {/* 앨범 커버 */}
             <div className="relative aspect-square overflow-hidden">
               <Image
-                src={`${process.env.NEXT_PUBLIC_API_URL}${activity.track.album.coverImage}`}
+                src={getImageUrl(activity.track.album.coverImage)}
                 alt={activity.track.title}
                 fill
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50" />
-              
+
               {/* 재생 버튼 */}
               <button
                 onClick={() => handlePlay(activity)}
@@ -226,7 +227,10 @@ export function FollowingLikes() {
               <div className="flex items-center gap-2">
                 <Link href={`/${activity.user.id}`}>
                   <Avatar className="h-6 w-6 border border-white/10">
-                    <AvatarImage src={activity.user.avatar} alt={activity.user.name} />
+                    <AvatarImage
+                      src={activity.user.avatar}
+                      alt={activity.user.name}
+                    />
                     <AvatarFallback>{activity.user.name[0]}</AvatarFallback>
                   </Avatar>
                 </Link>
@@ -250,7 +254,10 @@ export function FollowingLikes() {
 
             {/* TrackActions 추가 */}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-              <TrackActions track={convertToTrack(activity)} onAddToPlaylist={handleTrackAction} />
+              <TrackActions
+                track={convertToTrack(activity)}
+                onAddToPlaylist={handleTrackAction}
+              />
             </div>
           </div>
         ))}

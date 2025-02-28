@@ -29,7 +29,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn, formatDuration } from "@/lib/utils";
+import { cn, formatDuration, getImageUrl } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useTrackRecommendations } from "@/hooks/use-track-recommendations";
 
@@ -86,9 +86,7 @@ function SortableTrackItem({
 
       <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-white/5">
         <Image
-          src={
-            `${process.env.NEXT_PUBLIC_API_URL}${track.album?.coverImage}` || ""
-          }
+          src={getImageUrl(track.album?.coverImage || "")}
           alt={track.title}
           fill
           className="object-cover"
@@ -193,7 +191,7 @@ function SortableRecommendedTrackItem({ track, index, addToQueue, onRemove, onPl
       </div>
       <div className="relative">
         <Image
-          src={`${process.env.NEXT_PUBLIC_API_URL}${track.album?.coverImage}`}
+          src={getImageUrl(track.album?.coverImage || "")}
           alt={track.title}
           width={40}
           height={40}

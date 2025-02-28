@@ -2,7 +2,7 @@ import React from "react";
 import { Album } from "@/types/album";
 import Image from "next/image";
 import Link from "next/link";
-
+import { getImageUrl } from "@/lib/utils";
 interface AlbumCardProps {
   album: Album;
 }
@@ -17,7 +17,7 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
       <div className="aspect-square bg-gradient-to-br from-white/5 to-transparent relative">
         {album.coverImage && (
           <Image
-            src={`${process.env.NEXT_PUBLIC_API_URL}${album.coverImage}`}
+            src={getImageUrl(album.coverImage)}
             alt={album.title}
             fill
             className="object-cover"

@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { IconPlayerPlay, IconChevronDown } from "@tabler/icons-react";
-import { cn, formatDuration } from "@/lib/utils";
+import { cn, formatDuration, getImageUrl } from "@/lib/utils";
 import { usePlayerStore } from "@/lib/store/player-store";
 import { Track } from "@/types/album";
 import { useEffect, useState } from "react";
@@ -143,7 +143,7 @@ export function SimilarUsersTracks() {
                   <div className="relative">
                     <div className="relative w-24 h-24 rounded-lg overflow-hidden">
                       <Image
-                        src={`${process.env.NEXT_PUBLIC_API_URL}${track.album.coverImage}`}
+                        src={getImageUrl(track.album.coverImage)}
                         alt={track.title}
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"

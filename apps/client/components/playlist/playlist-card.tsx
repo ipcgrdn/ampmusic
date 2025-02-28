@@ -2,6 +2,7 @@ import React from "react";
 import { Playlist } from "@/types/playlist"; // 플레이리스트 타입을 가져옵니다.
 import Image from "next/image";
 import Link from "next/link";
+import { getImageUrl } from "@/lib/utils";
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -17,7 +18,7 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
       <div className="aspect-square bg-gradient-to-br from-white/5 to-transparent relative">
         {playlist.coverImage && (
           <Image
-            src={`${process.env.NEXT_PUBLIC_API_URL}${playlist.coverImage}`}
+            src={getImageUrl(playlist.coverImage)}
             alt={playlist.title}
             fill
             className="object-cover"

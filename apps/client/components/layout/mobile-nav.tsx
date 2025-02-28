@@ -63,8 +63,8 @@ export function MobileNav() {
               <Image
                 src={user.avatar}
                 alt={user.name}
-                width={36}
-                height={36}
+                width={34}
+                height={34}
                 className="relative rounded-full ring-2 ring-white/20"
                 quality={85}
                 priority

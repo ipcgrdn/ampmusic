@@ -7,7 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { IconArrowUpRight, IconDisc } from "@tabler/icons-react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-
+import { getImageUrl } from "@/lib/utils";
 export function FeaturedArtists() {
   const { data: artists, isLoading } = useQuery({
     queryKey: ["featured-artists"],
@@ -83,7 +83,7 @@ export function FeaturedArtists() {
               <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
                 <div className="relative w-12 h-12 rounded-md overflow-hidden">
                   <Image
-                    src={`${process.env.NEXT_PUBLIC_API_URL}${artist.recentAlbum.coverImage}`}
+                    src={getImageUrl(artist.recentAlbum.coverImage)}
                     alt={artist.recentAlbum.title}
                     fill
                     className="object-cover"

@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { usePlayerStore } from "@/lib/store/player-store";
 import { Track } from "@/types/album";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getImageUrl } from "@/lib/utils";
 import { TrackActions } from "@/components/track/track-actions";
 import { AddToPlaylistModal } from "../playlist/add-to-playlist-modal";
 import { addTrackToPlaylist, getUserPlaylists } from "@/lib/api/playlist";
@@ -245,7 +245,7 @@ export function FollowingActivity() {
                   )}>
                     <div className="relative w-16 h-16 shrink-0">
                       <Image
-                        src={`${process.env.NEXT_PUBLIC_API_URL}${activity.track.album.coverImage}`}
+                        src={getImageUrl(activity.track.album.coverImage)}
                         alt={activity.track.album.title}
                         fill
                         className="rounded-lg shadow-lg object-cover"

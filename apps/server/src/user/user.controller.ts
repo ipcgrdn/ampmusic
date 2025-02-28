@@ -28,11 +28,20 @@ import { deleteOldAvatar } from './utils/file-upload.utils';
 import { mkdir } from 'fs/promises';
 import { AVATAR_UPLOAD_PATH } from '../constants/paths';
 import { User } from '@prisma/client';
+import { S3Service } from '../utils/s3-upload.util';
+import { diskStorage, memoryStorage } from 'multer';
+import { extname } from 'path';
 
 @Controller('users')
 @UseGuards(JwtGuard)
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  private readonly s3Service: S3Service;
+  private readonly isProduction: boolean;
+
+  constructor(private readonly userService: UserService) {
+    this.s3Service = new S3Service();
+    this.isProduction = process.env.NODE_ENV === 'production';
+  }
 
   @Get('featured')
   async getFeaturedArtists() {
@@ -171,6 +180,19 @@ export class UserController {
   @Post(':id/avatar')
   @UseInterceptors(
     FileInterceptor('file', {
+      storage: process.env.NODE_ENV === 'production'
+        ? memoryStorage()
+        : diskStorage({
+            destination: './uploads/avatars',
+            filename: (_, file, cb) => {
+              const randomName = Array(32)
+                .fill(null)
+                .map(() => Math.round(Math.random() * 16).toString(16))
+                .join('');
+              const filename = `avatar-${randomName}${extname(file.originalname)}`;
+              cb(null, filename);
+            },
+          }),
       limits: {
         fileSize: maxFileSize,
       },
@@ -192,31 +214,45 @@ export class UserController {
 
     try {
       const currentUser = await this.userService.findById(id);
-      const optimizedImageBuffer = await optimizeImage(file.buffer);
+      const optimizedImageBuffer = await optimizeImage(
+        Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.path)
+      );
 
-      try {
-        await mkdir(AVATAR_UPLOAD_PATH, { recursive: true });
-      } catch (err) {
-        throw new InternalServerErrorException(
-          'Failed to create upload directory',
+      let avatarUrl: string;
+
+      if (this.isProduction) {
+        const result = await this.s3Service.uploadFile(
+          { ...file, buffer: optimizedImageBuffer },
+          'avatars'
         );
+        avatarUrl = result.url;
+      } else {
+        try {
+          await mkdir(AVATAR_UPLOAD_PATH, { recursive: true });
+        } catch (err) {
+          throw new InternalServerErrorException(
+            'Failed to create upload directory',
+          );
+        }
+
+        const filename = `avatar-${Date.now()}.webp`;
+        const filePath = join(AVATAR_UPLOAD_PATH, filename);
+
+        try {
+          await writeFile(filePath, optimizedImageBuffer);
+          avatarUrl = `${process.env.API_URL}/uploads/avatars/${filename}`;
+        } catch (err) {
+          throw new InternalServerErrorException('Failed to save image file');
+        }
       }
 
-      const filename = `avatar-${Date.now()}.webp`;
-      const filePath = join(AVATAR_UPLOAD_PATH, filename);
-
-      try {
-        await writeFile(filePath, optimizedImageBuffer);
-      } catch (err) {
-        throw new InternalServerErrorException('Failed to save image file');
-      }
-
-      const avatarUrl = `${process.env.API_URL}/uploads/avatars/${filename}`;
       const updatedUser = await this.userService.updateUser(id, {
         avatar: avatarUrl,
       });
 
-      await deleteOldAvatar(currentUser.avatar);
+      if (!this.isProduction) {
+        await deleteOldAvatar(currentUser.avatar);
+      }
 
       return updatedUser;
     } catch (error) {

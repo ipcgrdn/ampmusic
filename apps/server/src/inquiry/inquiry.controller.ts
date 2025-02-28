@@ -20,13 +20,20 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { UpdateInquiryStatusDto } from './dto/update-inquiry-status.dto';
 import { AddInquiryAnswerDto } from './dto/add-inquiry-answer.dto';
 import { extname } from 'path';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { S3Service, FILE_VALIDATION_RULES } from '../utils/s3-upload.util';
 
 @Controller('inquiries')
 @UseGuards(JwtGuard)
 export class InquiryController {
-  constructor(private readonly inquiryService: InquiryService) {}
+  private readonly s3Service: S3Service;
+  private readonly isProduction: boolean;
+
+  constructor(private readonly inquiryService: InquiryService) {
+    this.s3Service = new S3Service();
+    this.isProduction = process.env.NODE_ENV === 'production';
+  }
 
   @Get('me')
   async findMyInquiries(@GetUser('id') userId: string) {
@@ -89,29 +96,37 @@ export class InquiryController {
   @Post('upload/image')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/images',
-        filename: (_, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          const filename = `${randomName}${extname(file.originalname)}`;
-          return cb(null, filename);
-        },
-      }),
+      storage: process.env.NODE_ENV === 'production'
+        ? memoryStorage()
+        : diskStorage({
+            destination: './uploads/images',
+            filename: (_, file, cb) => {
+              const randomName = Array(32)
+                .fill(null)
+                .map(() => Math.round(Math.random() * 16).toString(16))
+                .join('');
+              return cb(null, `${randomName}${extname(file.originalname)}`);
+            },
+          }),
+      limits: {
+        fileSize: FILE_VALIDATION_RULES.image.maxSize,
+      },
       fileFilter: (_, file, cb) => {
-        if (!file.mimetype.match(/^image\/(jpeg|png|gif|bmp|webp)$/)) {
-          return cb(new BadRequestException('Invalid file type'), false);
+        if (!FILE_VALIDATION_RULES.image.allowedMimeTypes.includes(file.mimetype as 'image/jpeg' | 'image/png' | 'image/jpg' | 'image/webp')) {
+          return cb(new BadRequestException('지원하지 않는 이미지 형식입니다'), false);
         }
         cb(null, true);
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
       },
     }),
   )
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('파일이 없습니다.');
+    }
+
+    if (this.isProduction) {
+      return this.s3Service.uploadFile(file, 'images');
+    }
     return this.inquiryService.uploadImage(file);
   }
 }
