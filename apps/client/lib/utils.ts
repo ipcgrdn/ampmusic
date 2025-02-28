@@ -54,18 +54,32 @@ export function formatDurationLong(seconds: number) {
 }
 
 export function getImageUrl(path: string): string {
+  console.log('getImageUrl input path:', path);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+  
+  if (!path) {
+    console.log('Path is empty or undefined');
+    return '';
+  }
+  
   // path가 이미 완전한 URL인 경우 그대로 반환
   if (path.startsWith('http')) {
+    console.log('Returning original URL:', path);
     return path;
   }
   
   // 프로덕션 환경에서는 CDN URL 사용
   if (process.env.NODE_ENV === 'production') {
-    return `https://cdn.ampmusic.im${path}`;
+    const cdnUrl = `https://cdn.ampmusic.im${path}`;
+    console.log('Returning CDN URL:', cdnUrl);
+    return cdnUrl;
   }
   
   // 개발 환경에서는 API 서버 URL 사용
-  return `${process.env.NEXT_PUBLIC_API_URL}${path}`;
+  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}${path}`;
+  console.log('Returning API URL:', apiUrl);
+  return apiUrl;
 }
 
 export function formatCount(count: number): string {
