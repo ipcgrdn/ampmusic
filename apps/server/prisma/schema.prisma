@@ -301,7 +301,7 @@ model TrackActivityLog {
   trackId   String
   type      String   // PLAY, LIKE 등
   createdAt DateTime @default(now())
-  track     Track    @relation(fields: [trackId], references: [id])
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@index([trackId, type, createdAt])
 }

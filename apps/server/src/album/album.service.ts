@@ -182,7 +182,7 @@ export class AlbumService {
   ) {
     const album = await this.prisma.album.findUnique({
       where: { id },
-      include: { artist: true },
+      include: { artist: true, tracks: true },
     });
 
     if (!album) {
@@ -195,39 +195,75 @@ export class AlbumService {
 
     const { tracks, artistId, taggedUserIds, ...albumData } = updateAlbumDto;
 
-    const updatedAlbum = await this.prisma.album.update({
-      where: { id },
-      data: {
-        ...albumData,
-        ...(tracks && {
-          tracks: {
-            deleteMany: {},
-            create: tracks.map((track) => ({
-              ...track,
-              artist: {
-                connect: { id: userId },
-              },
-            })),
-          },
-        }),
-        ...(taggedUserIds && {
+    // 트랜잭션으로 처리
+    const updatedAlbum = await this.prisma.$transaction(async (prisma) => {
+      // 1. 앨범 기본 정보 업데이트
+      const updated = await prisma.album.update({
+        where: { id },
+        data: {
+          ...albumData,
+          ...(taggedUserIds && {
+            taggedUsers: {
+              deleteMany: {},
+              create: taggedUserIds.map((taggedUserId) => ({
+                user: { connect: { id: taggedUserId } },
+              })),
+            },
+          }),
+        },
+        include: {
+          tracks: true,
+          artist: true,
           taggedUsers: {
-            deleteMany: {}, // 기존 태그 모두 삭제
-            create: taggedUserIds.map((taggedUserId) => ({
-              user: { connect: { id: taggedUserId } },
-            })),
-          },
-        }),
-      },
-      include: {
-        tracks: true,
-        artist: true,
-        taggedUsers: {
-          include: {
-            user: true,
+            include: {
+              user: true,
+            },
           },
         },
-      },
+      });
+
+      // 2. 트랙 업데이트 (있는 경우)
+      if (tracks) {
+        // 기존 트랙 ID 목록
+        const existingTrackIds = album.tracks.map(track => track.id);
+        
+        // 새로운 트랙 생성
+        for (const [index, track] of tracks.entries()) {
+          if (index < existingTrackIds.length) {
+            // 기존 트랙 업데이트
+            await prisma.track.update({
+              where: { id: existingTrackIds[index] },
+              data: {
+                ...track,
+                order: index,
+              },
+            });
+          } else {
+            // 새로운 트랙 추가
+            await prisma.track.create({
+              data: {
+                ...track,
+                order: index,
+                album: { connect: { id } },
+                artist: { connect: { id: userId } },
+              },
+            });
+          }
+        }
+
+        // 남은 기존 트랙 삭제 (새로운 트랙 수가 더 적은 경우)
+        if (existingTrackIds.length > tracks.length) {
+          await prisma.track.deleteMany({
+            where: {
+              id: {
+                in: existingTrackIds.slice(tracks.length),
+              },
+            },
+          });
+        }
+      }
+
+      return updated;
     });
 
     await this.searchService.indexDocument('album', updatedAlbum);
@@ -256,7 +292,7 @@ export class AlbumService {
   async remove(id: string, userId: string) {
     const album = await this.prisma.album.findUnique({
       where: { id },
-      include: { artist: true, taggedUsers: true },
+      include: { artist: true, tracks: true, taggedUsers: true },
     });
 
     if (!album) {
@@ -267,8 +303,21 @@ export class AlbumService {
       throw new UnauthorizedException("Cannot delete other user's album");
     }
 
-    return this.prisma.album.delete({
-      where: { id },
+    // 트랜잭션으로 처리
+    return this.prisma.$transaction(async (prisma) => {
+      // 1. 트랙 활동 로그 삭제
+      await prisma.trackActivityLog.deleteMany({
+        where: {
+          trackId: {
+            in: album.tracks.map(track => track.id),
+          },
+        },
+      });
+
+      // 2. 앨범 삭제 (트랙은 cascade로 자동 삭제)
+      return prisma.album.delete({
+        where: { id },
+      });
     });
   }
 
