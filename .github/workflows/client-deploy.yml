@@ -47,6 +47,30 @@ jobs:
 
             echo "===== 배포 시작: $(date) ====="
 
+            # 디스크 공간 확인 및 정리
+            echo "디스크 공간 확인 중..."
+            df -h /
+            DISK_SPACE=$(df -k / | awk 'NR==2 {print $4}')
+            if [ $DISK_SPACE -lt 2000000 ]; then # 2GB 미만이면 정리 작업 진행
+              echo "디스크 공간이 부족합니다. 불필요한 파일을 정리합니다..."
+              
+              # npm 캐시 정리
+              npm cache clean --force
+              
+              # 로그 파일 정리
+              sudo journalctl --vacuum-time=1d
+              
+              # 임시 디렉토리 정리
+              sudo rm -rf /tmp/* || true
+              rm -rf ~/.npm/_cacache/* || true
+              
+              # 이전 배포 백업 정리
+              rm -rf ~/amp/apps/client/.next_backup* || true
+              
+              echo "정리 후 디스크 공간:"
+              df -h /
+            fi
+
             # 시스템 리소스 정리 및 확인
             echo "시스템 리소스 정리 중..."
             pm2 flush # PM2 로그 정리
@@ -84,41 +108,49 @@ jobs:
               sleep 2
             fi
 
-            # 임시 작업 디렉토리 생성
-            TEMP_DIR=$(mktemp -d -p ~)
-            echo "임시 작업 디렉토리: $TEMP_DIR"
-
-            # 현재 코드 복사
-            cp -r ~/amp/apps/client/* $TEMP_DIR/
-
-            # 임시 디렉토리로 이동
-            cd $TEMP_DIR
-
+            # Git 저장소에서 직접 작업 (임시 디렉토리 사용 안 함)
+            echo "기존 파일 백업 중..."
+            if [ -d .next ]; then
+              mv .next .next_backup
+            fi
+            
+            # 변경사항 스태시
+            git stash || true
+            
             # 최신 코드 가져오기
             echo "최신 코드 가져오는 중..."
-            git remote set-url origin $(cd ~/amp && git remote get-url origin)
             git fetch --all
             git reset --hard origin/main
 
             # Next.js 캐시 완전 삭제
             echo "캐시 삭제 중..."
-            rm -rf .next
             rm -rf node_modules/.cache
 
             # 빌드 시도
             echo "의존성 설치 중..."
-            if ! npm install; then
-              echo "npm install 실패, 배포 중단"
-              rm -rf $TEMP_DIR
+            if ! npm ci --prefer-offline --no-audit; then
+              echo "npm install 실패, 롤백 수행 중..."
+              git reset --hard HEAD@{1}
+              if [ -d .next_backup ]; then
+                rm -rf .next
+                mv .next_backup .next
+              fi
               exit 1
             fi
 
             echo "Next.js 빌드 중..."
             if ! npm run build; then
-              echo "빌드 실패, 배포 중단"
-              rm -rf $TEMP_DIR
+              echo "빌드 실패, 롤백 수행 중..."
+              git reset --hard HEAD@{1}
+              if [ -d .next_backup ]; then
+                rm -rf .next
+                mv .next_backup .next
+              fi
               exit 1
             fi
+
+            # 백업 정리
+            rm -rf .next_backup
 
             echo "새 버전 배포 중..."
 
@@ -144,23 +176,13 @@ jobs:
                   sudo systemctl reload nginx
                   echo "트래픽이 새 버전으로 전환되었습니다."
                   
-                  # 성공적으로 트래픽이 전환된 후 기존 배포 업데이트
-                  echo "기존 코드 저장소 업데이트 중..."
-                  cd ~/amp/apps/client
-                  cp -r $TEMP_DIR/.next .
-                  cp -r $TEMP_DIR/node_modules .
-                  
                   # 기존 프로세스는 트래픽이 새 버전으로 전환된 후에만 종료
                   echo "이전 버전 종료 중..."
                   pm2 delete amp-frontend 2>/dev/null || true
                   pm2 delete amp-frontend-new
                   
                   # 새 버전을 정식 이름으로 등록
-                  cd ~/amp/apps/client
                   PORT=$NEW_PORT pm2 start npm --name "amp-frontend" -- start
-                  
-                  # 임시 디렉토리 정리
-                  rm -rf $TEMP_DIR
                   
                   echo "===== 배포 완료: $(date) ====="
                   exit 0
@@ -182,9 +204,6 @@ jobs:
             # 새 프로세스 제거
             pm2 delete amp-frontend-new 2>/dev/null || true
             
-            # 임시 디렉토리 정리
-            rm -rf $TEMP_DIR
-
             echo "===== 롤백 완료: $(date) ====="
             exit 1
 

@@ -86,7 +86,7 @@ jobs:
                 
                 # nginx 설정 업데이트 (프록시 포트 변경)
                 echo "Updating nginx configuration..."
-                sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$NEW_PORT/" /etc/nginx/sites-available/amp_backend.conf
+                sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$NEW_PORT/" /etc/nginx/sites-available/api.ampmusic.im
                 sudo nginx -t && sudo systemctl reload nginx
 
                 # 이전 버전 종료
@@ -108,7 +108,7 @@ jobs:
             docker system prune -f
             
             # nginx 설정이 변경되었다면 원래대로 복구
-            sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$CURRENT_PORT/" /etc/nginx/sites-available/amp_backend.conf
+            sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$CURRENT_PORT/" /etc/nginx/sites-available/api.ampmusic.im
             sudo nginx -t && sudo systemctl reload nginx
             
             exit 1
