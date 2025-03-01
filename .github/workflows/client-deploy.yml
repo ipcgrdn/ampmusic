@@ -181,87 +181,39 @@ jobs:
 
             # Next.js 설정 확인 
             echo "Next.js 설정 확인 중..."
+            # 강제로 일반 모드 사용 (standalone 모드 비활성화)
             USE_STANDALONE=false
             SERVER_JS_PATH=""
+            echo "동적 애플리케이션을 위해 일반 Next.js 모드(next start)로 강제 설정합니다."
 
-            # TypeScript와 JavaScript 설정 파일 모두 확인
+            # TypeScript와 JavaScript 설정 파일 모두 확인 - 로깅 목적으로만 유지
             echo "next.config.ts와 next.config.js 파일 확인 중..."
             if [ -f "next.config.ts" ]; then
               echo "next.config.ts 파일이 존재합니다."
               # TypeScript 파일에서 standalone 설정 확인
               if grep -q "output.*standalone" next.config.ts; then
-                echo "next.config.ts에서 standalone 출력 모드를 사용하는 것으로 감지됨"
-                USE_STANDALONE=true
+                echo "next.config.ts에서 standalone 출력 모드가 감지되었으나, 일반 모드로 실행됩니다."
               fi
             elif [ -f "next.config.js" ]; then
               echo "next.config.js 파일이 존재합니다."
               # JavaScript 파일에서 standalone 설정 확인
               if grep -q "output.*standalone" next.config.js; then
-                echo "next.config.js에서 standalone 출력 모드를 사용하는 것으로 감지됨"
-                USE_STANDALONE=true
+                echo "next.config.js에서 standalone 출력 모드가 감지되었으나, 일반 모드로 실행됩니다."
               fi
             else
               echo "next.config.js 또는 next.config.ts 파일이 존재하지 않습니다. 일반 모드로 진행합니다."
             fi
 
-            # standalone 디렉토리 확인 (standalone 설정과 상관없이 실제 빌드 결과 확인)
+            # standalone 디렉토리 확인 (정보 제공 목적으로만 유지)
             echo ".next 디렉토리 내용 확인:"
             ls -la .next/ || echo ".next 디렉토리가 존재하지 않습니다."
 
-            # 기본 standalone 경로 확인
-            if [ -d ".next/standalone" ]; then
-              echo "standalone 디렉토리가 존재합니다."
-              
-              # 단일 프로젝트 구조 확인
-              if [ -f ".next/standalone/server.js" ]; then
-                echo "기본 경로에 server.js 파일이 존재합니다."
-                USE_STANDALONE=true
-                SERVER_JS_PATH=".next/standalone/server.js"
-              # monorepo 구조 확인
-              elif [ -f ".next/standalone/apps/client/server.js" ]; then
-                echo "monorepo 구조의 경로에 server.js 파일이 존재합니다."
-                USE_STANDALONE=true
-                SERVER_JS_PATH=".next/standalone/apps/client/server.js"
-              else
-                echo "server.js 파일을 찾을 수 없습니다. 디렉토리 구조 확인:"
-                find .next/standalone -type f -name "server.js" || echo "server.js 파일이 존재하지 않습니다."
-                echo "standalone 모드를 사용할 수 없습니다."
-                USE_STANDALONE=false
-              fi
-            else
-              echo "standalone 디렉토리가 존재하지 않습니다. 일반 Next.js 모드로 시작합니다."
-              USE_STANDALONE=false
-            fi
-
-            echo "USE_STANDALONE=$USE_STANDALONE"
-            echo "SERVER_JS_PATH=$SERVER_JS_PATH"
-
-            # 빌드 완료 후 적절한 방식으로 PM2 시작
-            if [ "$USE_STANDALONE" = "true" ] && [ ! -z "$SERVER_JS_PATH" ]; then
-              echo "standalone 모드로 시작합니다. 경로: $SERVER_JS_PATH"
-              
-              # monorepo 구조일 경우 경로에 따라 디렉토리 이동
-              if [[ "$SERVER_JS_PATH" == *"apps/client"* ]]; then
-                cd .next/standalone
-                PORT=$NEW_PORT pm2 start apps/client/server.js --name "amp-frontend-$NEW_ENV"
-              else
-                cd .next/standalone
-                PORT=$NEW_PORT pm2 start server.js --name "amp-frontend-$NEW_ENV"
-              fi
-              
-              cd ~/amp/apps/client
-              
-              # 시작 확인
-              sleep 2
-              if ! pm2 show amp-frontend-$NEW_ENV | grep -q "online"; then
-                echo "standalone 모드 시작 실패, 일반 모드로 재시도합니다."
-                cd ~/amp/apps/client
-                PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
-              fi
-            else
-              echo "일반 Next.js 모드로 시작합니다."
-              PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
-            fi
+            # 서버 시작 방식 강제 설정
+            echo "USE_STANDALONE=$USE_STANDALONE (강제 비활성화됨)"
+            
+            # 빌드 완료 후 항상 일반 모드로 PM2 시작
+            echo "일반 Next.js 모드로 시작합니다."
+            PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
 
             # 새 프로세스 상태 확인
             echo "새 프로세스 상태:"
