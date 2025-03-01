@@ -13,6 +13,7 @@ import { NotificationModal } from "../notification/notification-modal";
 import { useNotificationStore } from "@/store/notification-store";
 import { useQuery } from "@tanstack/react-query";
 import { getUserPlaylists } from "@/lib/api/playlist";
+import { getImageUrl } from "@/lib/utils";
 
 // 네비게이션 아이템 컴포넌트
 function NavItem({ href, label, icon: Icon }: NavItemType) {
@@ -116,7 +117,7 @@ export function Sidebar() {
               )}
             >
               <Image
-                src={`${process.env.NEXT_PUBLIC_API_URL}${playlist.coverImage}`}
+                src={getImageUrl(playlist.coverImage)}
                 alt={playlist.title}
                 width={24}
                 height={24}

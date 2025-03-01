@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Disc, ListMusic, Plus } from "lucide-react";
+import { Disc, ListMusic } from "lucide-react";
 
 const uploadOptions = [
   {
@@ -9,21 +9,14 @@ const uploadOptions = [
     description: "여러 트랙을 포함한 앨범을 업로드합니다",
     icon: Disc,
     href: "/upload/album",
-    color: "from-purple-500/10 to-blue-500/10"
+    color: "from-purple-500/10 to-blue-500/10",
   },
   {
     title: "플레이리스트",
     description: "나만의 플레이리스트를 만들어보세요",
     icon: ListMusic,
     href: "/upload/playlist",
-    color: "from-indigo-500/10 to-purple-500/10"
-  },
-  {
-    title: "준비 중",
-    description: "Coming Soon...",
-    icon: Plus,
-    href: "",
-    color: "from-blue-500/10 to-indigo-500/10"
+    color: "from-indigo-500/10 to-purple-500/10",
   },
 ];
 
@@ -60,15 +53,19 @@ export default function UploadPage() {
                   backdrop-blur-sm transition-all hover:bg-white/[0.04] text-left"
               >
                 {/* Hover Effect */}
-                <div className={`absolute -inset-2 bg-gradient-to-r ${option.color} rounded-3xl
-                  opacity-0 group-hover:opacity-100 transition-opacity blur-xl`} />
-                
+                <div
+                  className={`absolute -inset-2 bg-gradient-to-r ${option.color} rounded-3xl
+                  opacity-0 group-hover:opacity-100 transition-opacity blur-xl`}
+                />
+
                 <div className="relative space-y-4">
-                  <div className="h-12 w-12 rounded-full bg-white/[0.05] flex items-center justify-center
-                    group-hover:scale-110 transition-transform">
+                  <div
+                    className="h-12 w-12 rounded-full bg-white/[0.05] flex items-center justify-center
+                    group-hover:scale-110 transition-transform"
+                  >
                     <option.icon className="h-6 w-6 text-white/70" />
                   </div>
-                  
+
                   <div>
                     <h3 className="text-lg font-semibold text-white/90 mb-1">
                       {option.title}
@@ -78,8 +75,10 @@ export default function UploadPage() {
                     </p>
                   </div>
 
-                  <div className="absolute bottom-20 right-4 opacity-0 transform translate-x-2
-                    group-hover:opacity-100 group-hover:translate-x-0 transition-all">
+                  <div
+                    className="absolute bottom-20 right-4 opacity-0 transform translate-x-2
+                    group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                  >
                     <span className="text-white/60">→</span>
                   </div>
                 </div>
@@ -90,4 +89,4 @@ export default function UploadPage() {
       </div>
     </div>
   );
-} 
+}

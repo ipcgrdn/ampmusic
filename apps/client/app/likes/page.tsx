@@ -31,7 +31,7 @@ const tabs = [
 type TabValue = typeof tabs[number]['value'];
 
 export default function LikesPage() {
-  const [selectedTab, setSelectedTab] = useState<TabValue>("albums");
+  const [selectedTab, setSelectedTab] = useState<TabValue>("tracks");
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
