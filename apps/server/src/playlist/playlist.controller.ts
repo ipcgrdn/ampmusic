@@ -72,8 +72,15 @@ export class PlaylistController {
         throw new UnauthorizedException('플레이리스트를 수정할 권한이 없습니다.');
       }
 
-      if (updatePlaylistDto.coverImage && !updatePlaylistDto.coverImage.startsWith('/uploads/')) {
-        throw new BadRequestException('올바른 이미지 경로가 아닙니다');
+      if (updatePlaylistDto.coverImage) {
+        const isProduction = process.env.NODE_ENV === 'production';
+        const isValidPath = isProduction
+          ? updatePlaylistDto.coverImage.startsWith('https://cdn.ampmusic.im/')
+          : updatePlaylistDto.coverImage.startsWith('/uploads/');
+
+        if (!isValidPath) {
+          throw new BadRequestException('올바른 이미지 경로가 아닙니다');
+        }
       }
 
       const updatedPlaylist = await this.playlistService.update(id, user.id, updatePlaylistDto);

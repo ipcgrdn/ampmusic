@@ -49,7 +49,6 @@ jobs:
 
             # 시스템 리소스 정리 및 확인
             echo "시스템 리소스 정리 중..."
-            pm2 delete amp-frontend-new 2>/dev/null || true
             pm2 flush # PM2 로그 정리
             sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches' # 시스템 캐시 정리
 
@@ -60,23 +59,46 @@ jobs:
               echo "경고: 가용 메모리가 매우 부족합니다. 배포 중 문제가 발생할 수 있습니다."
             fi
 
-            # 포트 3001이 사용 중인지 확인
-            if lsof -i:3001; then
-              echo "포트 3001이 이미 사용 중입니다. 해당 프로세스를 종료합니다."
+            # 현재 실행 중인 앱 확인
+            CURRENT_APP=$(pm2 list | grep amp-frontend | grep -v new | grep online | wc -l)
+            if [ "$CURRENT_APP" -eq "0" ]; then
+              echo "기존 amp-frontend가 실행 중이지 않습니다. 새 배포를 진행합니다."
+              CURRENT_PORT=3000
+              NEW_PORT=3001
+            else
+              CURRENT_PORT=$(pm2 show amp-frontend | grep "env.PORT" | grep -o '[0-9]*' || echo "3000")
+              if [ "$CURRENT_PORT" = "3000" ]; then
+                NEW_PORT=3001
+              else
+                NEW_PORT=3000
+              fi
+            fi
+
+            echo "현재 서비스 포트: $CURRENT_PORT"
+            echo "새 버전 배포 포트: $NEW_PORT"
+
+            # 새 버전을 위한, 포트가 이미 사용 중인지 확인
+            if lsof -i:$NEW_PORT; then
+              echo "포트 $NEW_PORT가 이미 사용 중입니다. 해당 프로세스를 종료합니다."
               pm2 delete amp-frontend-new 2>/dev/null || true
               sleep 2
             fi
 
-            # 현재 빌드 백업
-            if [ -d ".next" ]; then
-              echo "현재 빌드 백업 중..."
-              rm -rf .next_backup
-              cp -r .next .next_backup
-            fi
+            # 임시 작업 디렉토리 생성
+            TEMP_DIR=$(mktemp -d -p ~)
+            echo "임시 작업 디렉토리: $TEMP_DIR"
+
+            # 현재 코드 복사
+            cp -r ~/amp/apps/client/* $TEMP_DIR/
+
+            # 임시 디렉토리로 이동
+            cd $TEMP_DIR
 
             # 최신 코드 가져오기
             echo "최신 코드 가져오는 중..."
-            git pull
+            git remote set-url origin $(cd ~/amp && git remote get-url origin)
+            git fetch --all
+            git reset --hard origin/main
 
             # Next.js 캐시 완전 삭제
             echo "캐시 삭제 중..."
@@ -86,70 +108,82 @@ jobs:
             # 빌드 시도
             echo "의존성 설치 중..."
             if ! npm install; then
-              echo "npm install 실패, 롤백 수행 중..."
-              if [ -d ".next_backup" ]; then
-                rm -rf .next
-                mv .next_backup .next
-              fi
+              echo "npm install 실패, 배포 중단"
+              rm -rf $TEMP_DIR
               exit 1
             fi
 
             echo "Next.js 빌드 중..."
             if ! npm run build; then
-              echo "빌드 실패, 롤백 수행 중..."
-              if [ -d ".next_backup" ]; then
-                rm -rf .next
-                mv .next_backup .next
-              fi
+              echo "빌드 실패, 배포 중단"
+              rm -rf $TEMP_DIR
               exit 1
             fi
 
             echo "새 버전 배포 중..."
 
-            # 새로운 PM2 프로세스 시작 (다른 포트에서)
-            PORT=3001 pm2 start npm --name "amp-frontend-new" -- start
+            # 새로운 PM2 프로세스 시작 (새 포트에서)
+            PORT=$NEW_PORT pm2 start npm --name "amp-frontend-new" -- start
 
             # 새 버전이 정상적으로 시작되었는지 확인
             echo "새 버전 상태 확인 중..."
             RETRY_COUNT=0
-            MAX_RETRIES=3
+            MAX_RETRIES=6
 
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
               sleep 5
-              if curl -s http://localhost:3001 > /dev/null; then
+              if curl -s http://localhost:$NEW_PORT > /dev/null; then
                 echo "새 버전 정상 작동 확인"
                 
-                # 기존 프로세스 중지 및 새 프로세스 전환
-                echo "프로세스 전환 중..."
-                pm2 delete amp-frontend 2>/dev/null || true
-                pm2 delete amp-frontend-new
-                pm2 start npm --name "amp-frontend" -- start
+                # nginx 설정 업데이트하여 트래픽 전환
+                echo "트래픽 전환 중..."
+                sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$NEW_PORT/" /etc/nginx/sites-available/amp_frontend.conf
                 
-                # 백업 제거
-                rm -rf .next_backup
-                
-                echo "===== 배포 완료: $(date) ====="
-                exit 0
+                # nginx 설정 테스트 및 적용
+                if sudo nginx -t; then
+                  sudo systemctl reload nginx
+                  echo "트래픽이 새 버전으로 전환되었습니다."
+                  
+                  # 성공적으로 트래픽이 전환된 후 기존 배포 업데이트
+                  echo "기존 코드 저장소 업데이트 중..."
+                  cd ~/amp/apps/client
+                  cp -r $TEMP_DIR/.next .
+                  cp -r $TEMP_DIR/node_modules .
+                  
+                  # 기존 프로세스는 트래픽이 새 버전으로 전환된 후에만 종료
+                  echo "이전 버전 종료 중..."
+                  pm2 delete amp-frontend 2>/dev/null || true
+                  pm2 delete amp-frontend-new
+                  
+                  # 새 버전을 정식 이름으로 등록
+                  cd ~/amp/apps/client
+                  PORT=$NEW_PORT pm2 start npm --name "amp-frontend" -- start
+                  
+                  # 임시 디렉토리 정리
+                  rm -rf $TEMP_DIR
+                  
+                  echo "===== 배포 완료: $(date) ====="
+                  exit 0
+                else
+                  echo "nginx 설정 오류, 롤백 진행"
+                  # nginx 설정 원상복구
+                  sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$CURRENT_PORT/" /etc/nginx/sites-available/amp_frontend.conf
+                  sudo nginx -t && sudo systemctl reload nginx
+                  break
+                fi
               fi
               
               RETRY_COUNT=$((RETRY_COUNT+1))
               echo "재시도 중... ($RETRY_COUNT/$MAX_RETRIES)"
             done
 
-            echo "새 버전 시작 실패, 롤백 수행 중..."
+            echo "새 버전 시작 실패 또는 검증 실패, 롤백 수행 중..."
 
             # 새 프로세스 제거
             pm2 delete amp-frontend-new 2>/dev/null || true
-
-            # 이전 버전 복구
-            if [ -d ".next_backup" ]; then
-              rm -rf .next
-              mv .next_backup .next
-              echo "이전 버전으로 복구 완료"
-            fi
-
-            # 기존 프로세스 재시작
-            pm2 restart amp-frontend
+            
+            # 임시 디렉토리 정리
+            rm -rf $TEMP_DIR
 
             echo "===== 롤백 완료: $(date) ====="
             exit 1
