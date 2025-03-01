@@ -1,4 +1,4 @@
 client
 
-# 경로
+# nginx 경로
 /etc/nginx/sites-available/amp
