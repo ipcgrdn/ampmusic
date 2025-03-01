@@ -62,7 +62,8 @@ jobs:
                 echo "기존 amp-frontend 프로세스를 블루 환경으로 마이그레이션합니다."
                 pm2 stop amp-frontend
                 echo "기존 프로세스 중지 완료. 블루 환경으로 재시작합니다."
-                PORT=3000 pm2 start npm --name "amp-frontend-blue" -- start
+                cd .next/standalone && PORT=3000 pm2 start server.js --name "amp-frontend-blue"
+                cd ~/amp/apps/client
                 echo "블루 환경 시작 완료. 기존 프로세스를 삭제합니다."
                 pm2 delete amp-frontend
                 CURRENT_ENV="blue"
@@ -132,13 +133,6 @@ jobs:
             pm2 flush # PM2 로그 정리
             sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches' # 시스템 캐시 정리
 
-            # 메모리 상태 로깅
-            FREE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $4}')
-            echo "현재 가용 메모리: ${FREE_MEM}MB"
-            if [ $FREE_MEM -lt 300 ]; then
-              echo "경고: 가용 메모리가 매우 부족합니다. 배포 중 문제가 발생할 수 있습니다."
-            fi
-
             # 새 환경의 포트가 사용 중인지 확인
             if lsof -i:$NEW_PORT; then
               echo "포트 $NEW_PORT가 이미 사용 중입니다. 해당 프로세스를 종료합니다."
@@ -185,13 +179,13 @@ jobs:
 
             echo "새 버전($NEW_ENV) 배포 중... (포트: $NEW_PORT)"
 
-            # 새로운 PM2 프로세스 시작 (새 환경 포트에서)
-            if [ "$INITIAL_DEPLOYMENT" = "true" ] && [ "$CURRENT_ENV" = "" ]; then
-              # 첫 배포이고 기존 환경이 없는 경우
-              echo "첫 배포를 블루 환경으로 시작합니다."
-              PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
+            # 새로운 PM2 프로세스 시작 - Next.js standalone 모드 사용
+            if [ -d ".next/standalone" ]; then
+              echo "Next.js standalone 모드 감지됨. standalone 서버를 시작합니다."
+              cd .next/standalone && PORT=$NEW_PORT pm2 start server.js --name "amp-frontend-$NEW_ENV"
+              cd ~/amp/apps/client
             else
-              # 일반적인 배포
+              echo "일반 Next.js 모드 감지됨. next start를 사용합니다."
               PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
             fi
 
@@ -216,22 +210,13 @@ jobs:
               HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$NEW_PORT)
               echo "헬스체크 응답 코드: $HEALTH_CHECK"
               
-              if [ "$HEALTH_CHECK" = "200" ]; then
+              # 200(성공) 및 307(임시 리디렉션)을 모두 성공으로 간주
+              if [ "$HEALTH_CHECK" = "200" ] || [ "$HEALTH_CHECK" = "307" ]; then
                 echo "새 버전($NEW_ENV) 정상 작동 확인 (HTTP 상태: $HEALTH_CHECK)"
                 
-                # Nginx 설정 업데이트 여부 확인
-                if [ "$INITIAL_DEPLOYMENT" = "true" ] && [ "$CURRENT_ENV" = "" ]; then
-                  # 첫 배포인 경우, Nginx 설정이 필요할 수 있음
-                  echo "첫 배포인 경우, Nginx 설정 점검:"
-                  if [ ! -f "/etc/nginx/sites-available/amp-frontend" ]; then
-                    echo "Nginx 설정 파일이 없습니다. 새로 생성합니다."
-                    # 여기에 Nginx 설정 생성 명령 추가 (필요시)
-                  fi
-                fi
-                
-                # Nginx 설정 업데이트 (프록시 포트 변경)
+                # Nginx 설정 업데이트 (프록시 포트 변경) - 올바른 파일 경로 사용
                 echo "Nginx 설정 업데이트 중..."
-                sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$NEW_PORT/" /etc/nginx/sites-available/amp-frontend
+                sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$NEW_PORT/" /etc/nginx/sites-available/amp
                 
                 # Nginx 설정 테스트 및 재시작
                 if sudo nginx -t; then
@@ -247,6 +232,10 @@ jobs:
                   
                   # 백업 제거
                   rm -rf .next_backup
+                  
+                  # PM2 목록 저장 (경고 메시지 제거)
+                  echo "PM2 목록 저장 중..."
+                  pm2 save
                   
                   echo "===== 블루-그린 배포 완료: $(date) ====="
                   exit 0
@@ -273,12 +262,6 @@ jobs:
               rm -rf .next
               mv .next_backup .next
               echo "이전 빌드로 복구 완료"
-            fi
-
-            # 초기 배포가 아닌 경우, 기존 프로세스가 있는지 확인
-            if [ "$INITIAL_DEPLOYMENT" = "false" ] && [ ! -z "$CURRENT_ENV" ]; then
-              echo "기존 환경($CURRENT_ENV)이 정상 작동 중인지 확인..."
-              pm2 list
             fi
 
             echo "===== 롤백 완료: $(date) ====="
