@@ -110,19 +110,17 @@ jobs:
                   context: .
                   dockerfile: Dockerfile
                 container_name: amp_backend_${NEW_ENV}
-                ports:
-                  - "${NEW_PORT}:4000"
+                network_mode: "host"
                 environment:
                   - NODE_ENV=production
                   - ELASTICSEARCH_URL=http://127.0.0.1:9200
                   - REDIS_URL=redis://127.0.0.1:6379
-                  - PORT=4000
+                  - PORT=${NEW_PORT}
                 env_file:
                   - .env
                 volumes:
                   - ./uploads:/app/uploads
                 restart: unless-stopped
-                network_mode: "host"
             EOL
             
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
@@ -267,6 +265,7 @@ jobs:
                 docker run -d --network host --name amp_backend \
                   -v $(pwd)/uploads:/app/uploads \
                   -v $(pwd)/.env:/app/.env \
+                  -e PORT=4000 \
                   --restart unless-stopped \
                   $LEGACY_IMAGE
                 
