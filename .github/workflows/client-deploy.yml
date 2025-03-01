@@ -45,25 +45,55 @@ jobs:
           script: |
             cd ~/amp/apps/client
 
-            echo "===== 배포 시작: $(date) ====="
+            echo "===== 블루-그린 배포 시작: $(date) ====="
+
+            # 현재 실행 중인 환경 확인 (블루/그린)
+            CURRENT_ENV="blue"
+            if pm2 list | grep -q "amp-frontend-blue"; then
+              if pm2 show amp-frontend-blue | grep -q "online"; then
+                CURRENT_ENV="blue"
+                NEW_ENV="green"
+                CURRENT_PORT=3000
+                NEW_PORT=3001
+              else
+                CURRENT_ENV="green"
+                NEW_ENV="blue"
+                CURRENT_PORT=3001
+                NEW_PORT=3000
+              fi
+            elif pm2 list | grep -q "amp-frontend-green"; then
+              if pm2 show amp-frontend-green | grep -q "online"; then
+                CURRENT_ENV="green"
+                NEW_ENV="blue"
+                CURRENT_PORT=3001
+                NEW_PORT=3000
+              else
+                CURRENT_ENV="blue"
+                NEW_ENV="green"
+                CURRENT_PORT=3000
+                NEW_PORT=3001
+              fi
+            fi
+
+            echo "현재 환경: $CURRENT_ENV (포트: $CURRENT_PORT)"
+            echo "새로운 환경: $NEW_ENV (포트: $NEW_PORT)"
 
             # 시스템 리소스 정리 및 확인
             echo "시스템 리소스 정리 중..."
-            pm2 delete amp-frontend-new 2>/dev/null || true
             pm2 flush # PM2 로그 정리
             sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches' # 시스템 캐시 정리
 
-            # 메모리 상태 로깅 (경고만 하고 계속 진행)
+            # 메모리 상태 로깅
             FREE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $4}')
             echo "현재 가용 메모리: ${FREE_MEM}MB"
             if [ $FREE_MEM -lt 300 ]; then
               echo "경고: 가용 메모리가 매우 부족합니다. 배포 중 문제가 발생할 수 있습니다."
             fi
 
-            # 포트 3001이 사용 중인지 확인
-            if lsof -i:3001; then
-              echo "포트 3001이 이미 사용 중입니다. 해당 프로세스를 종료합니다."
-              pm2 delete amp-frontend-new 2>/dev/null || true
+            # 새 환경의 포트가 사용 중인지 확인
+            if lsof -i:$NEW_PORT; then
+              echo "포트 $NEW_PORT가 이미 사용 중입니다. 해당 프로세스를 종료합니다."
+              pm2 delete amp-frontend-$NEW_ENV 2>/dev/null || true
               sleep 2
             fi
 
@@ -104,52 +134,67 @@ jobs:
               exit 1
             fi
 
-            echo "새 버전 배포 중..."
+            echo "새 버전($NEW_ENV) 배포 중..."
 
-            # 새로운 PM2 프로세스 시작 (다른 포트에서)
-            PORT=3001 pm2 start npm --name "amp-frontend-new" -- start
+            # 새로운 PM2 프로세스 시작 (새 환경 포트에서)
+            PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
 
             # 새 버전이 정상적으로 시작되었는지 확인
             echo "새 버전 상태 확인 중..."
             RETRY_COUNT=0
-            MAX_RETRIES=3
+            MAX_RETRIES=5
+            HEALTH_CHECK_INTERVAL=5
 
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              sleep 5
-              if curl -s http://localhost:3001 > /dev/null; then
-                echo "새 버전 정상 작동 확인"
+              sleep $HEALTH_CHECK_INTERVAL
+              echo "헬스체크 시도 #$((RETRY_COUNT+1))..."
+              
+              HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$NEW_PORT)
+              
+              if [ "$HEALTH_CHECK" = "200" ]; then
+                echo "새 버전($NEW_ENV) 정상 작동 확인 (HTTP 상태: $HEALTH_CHECK)"
                 
-                # 기존 프로세스 중지 및 새 프로세스 전환
-                echo "프로세스 전환 중..."
-                pm2 delete amp-frontend 2>/dev/null || true
-                pm2 delete amp-frontend-new
-                pm2 start npm --name "amp-frontend" -- start
+                # Nginx 설정 업데이트 (프록시 포트 변경)
+                echo "Nginx 설정 업데이트 중..."
+                sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]\+/proxy_pass http:\/\/localhost:$NEW_PORT/" /etc/nginx/sites-available/amp-frontend
                 
-                # 백업 제거
-                rm -rf .next_backup
-                
-                echo "===== 배포 완료: $(date) ====="
-                exit 0
+                # Nginx 설정 테스트 및 재시작
+                if sudo nginx -t; then
+                  sudo systemctl reload nginx
+                  echo "트래픽이 새 버전($NEW_ENV)으로 전환되었습니다."
+                  
+                  # 기존 버전 종료 (유예 시간 후)
+                  echo "10초 후 이전 버전($CURRENT_ENV) 종료..."
+                  sleep 10
+                  pm2 delete amp-frontend-$CURRENT_ENV 2>/dev/null || true
+                  
+                  # 백업 제거
+                  rm -rf .next_backup
+                  
+                  echo "===== 블루-그린 배포 완료: $(date) ====="
+                  exit 0
+                else
+                  echo "Nginx 설정 오류, 롤백 수행 중..."
+                  pm2 delete amp-frontend-$NEW_ENV
+                  exit 1
+                fi
               fi
               
               RETRY_COUNT=$((RETRY_COUNT+1))
               echo "재시도 중... ($RETRY_COUNT/$MAX_RETRIES)"
             done
 
-            echo "새 버전 시작 실패, 롤백 수행 중..."
+            echo "새 버전($NEW_ENV) 시작 실패, 롤백 수행 중..."
 
             # 새 프로세스 제거
-            pm2 delete amp-frontend-new 2>/dev/null || true
+            pm2 delete amp-frontend-$NEW_ENV 2>/dev/null || true
 
             # 이전 버전 복구
             if [ -d ".next_backup" ]; then
               rm -rf .next
               mv .next_backup .next
-              echo "이전 버전으로 복구 완료"
+              echo "이전 빌드로 복구 완료"
             fi
-
-            # 기존 프로세스 재시작
-            pm2 restart amp-frontend
 
             echo "===== 롤백 완료: $(date) ====="
             exit 1
