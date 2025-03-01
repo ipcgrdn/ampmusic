@@ -266,11 +266,7 @@ export const PrivacyContent = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-white/60">직책</span>
-                <span className="text-white">대표</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white/60">연락처</span>
-                <span className="text-white">010-6415-2584</span>
+                <span className="text-white">대표자</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-white/60">이메일</span>

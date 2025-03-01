@@ -46,28 +46,72 @@ jobs:
             cd ~/amp/apps/client
 
             echo "===== 블루-그린 배포 시작: $(date) ====="
-
-            # 현재 실행 중인 환경 확인 (블루/그린)
-            CURRENT_ENV="blue"
-            if pm2 list | grep -q "amp-frontend-blue"; then
-              if pm2 show amp-frontend-blue | grep -q "online"; then
+            
+            # 기존 PM2 프로세스 상태 확인
+            echo "기존 PM2 프로세스 확인 중..."
+            pm2 list
+            
+            # 초기 배포 여부 확인
+            INITIAL_DEPLOYMENT=false
+            if ! pm2 list | grep -q "amp-frontend-blue" && ! pm2 list | grep -q "amp-frontend-green"; then
+              echo "블루/그린 환경이 설정되어 있지 않습니다. 초기 배포를 진행합니다."
+              INITIAL_DEPLOYMENT=true
+              
+              # 기존 amp-frontend가 있으면 블루 환경으로 변환
+              if pm2 list | grep -q "amp-frontend"; then
+                echo "기존 amp-frontend 프로세스를 블루 환경으로 마이그레이션합니다."
+                pm2 stop amp-frontend
+                echo "기존 프로세스 중지 완료. 블루 환경으로 재시작합니다."
+                PORT=3000 pm2 start npm --name "amp-frontend-blue" -- start
+                echo "블루 환경 시작 완료. 기존 프로세스를 삭제합니다."
+                pm2 delete amp-frontend
                 CURRENT_ENV="blue"
                 NEW_ENV="green"
                 CURRENT_PORT=3000
                 NEW_PORT=3001
               else
-                CURRENT_ENV="green"
+                # 아무것도 없으면 블루 환경부터 시작
+                echo "실행 중인 프로세스가 없습니다. 새로운 블루 환경으로 시작합니다."
+                CURRENT_ENV=""
                 NEW_ENV="blue"
-                CURRENT_PORT=3001
+                CURRENT_PORT=""
                 NEW_PORT=3000
               fi
-            elif pm2 list | grep -q "amp-frontend-green"; then
-              if pm2 show amp-frontend-green | grep -q "online"; then
-                CURRENT_ENV="green"
-                NEW_ENV="blue"
-                CURRENT_PORT=3001
-                NEW_PORT=3000
+            else
+              # 기존 블루/그린 환경 감지
+              echo "기존 블루/그린 환경 감지 중..."
+              
+              if pm2 list | grep -q "amp-frontend-blue"; then
+                if pm2 show amp-frontend-blue | grep -q "online"; then
+                  echo "블루 환경이 온라인 상태입니다. 그린 환경으로 배포합니다."
+                  CURRENT_ENV="blue"
+                  NEW_ENV="green"
+                  CURRENT_PORT=3000
+                  NEW_PORT=3001
+                else
+                  echo "블루 환경이 오프라인 상태입니다. 블루 환경으로 배포합니다."
+                  CURRENT_ENV="green"
+                  NEW_ENV="blue"
+                  CURRENT_PORT=3001
+                  NEW_PORT=3000
+                fi
+              elif pm2 list | grep -q "amp-frontend-green"; then
+                if pm2 show amp-frontend-green | grep -q "online"; then
+                  echo "그린 환경이 온라인 상태입니다. 블루 환경으로 배포합니다."
+                  CURRENT_ENV="green"
+                  NEW_ENV="blue"
+                  CURRENT_PORT=3001
+                  NEW_PORT=3000
+                else
+                  echo "그린 환경이 오프라인 상태입니다. 그린 환경으로 배포합니다."
+                  CURRENT_ENV="blue"
+                  NEW_ENV="green"
+                  CURRENT_PORT=3000
+                  NEW_PORT=3001
+                fi
               else
+                # 예상치 못한 상황 (둘 다 없거나 둘 다 오프라인)
+                echo "예상치 못한 환경 상태. 기본 환경 설정으로 진행합니다."
                 CURRENT_ENV="blue"
                 NEW_ENV="green"
                 CURRENT_PORT=3000
@@ -75,8 +119,13 @@ jobs:
               fi
             fi
 
-            echo "현재 환경: $CURRENT_ENV (포트: $CURRENT_PORT)"
-            echo "새로운 환경: $NEW_ENV (포트: $NEW_PORT)"
+            # 변수 확인을 위한 디버깅 출력
+            echo "배포 환경 변수:"
+            echo "INITIAL_DEPLOYMENT=$INITIAL_DEPLOYMENT"
+            echo "CURRENT_ENV=$CURRENT_ENV"
+            echo "NEW_ENV=$NEW_ENV"
+            echo "CURRENT_PORT=$CURRENT_PORT"
+            echo "NEW_PORT=$NEW_PORT"
 
             # 시스템 리소스 정리 및 확인
             echo "시스템 리소스 정리 중..."
@@ -134,10 +183,21 @@ jobs:
               exit 1
             fi
 
-            echo "새 버전($NEW_ENV) 배포 중..."
+            echo "새 버전($NEW_ENV) 배포 중... (포트: $NEW_PORT)"
 
             # 새로운 PM2 프로세스 시작 (새 환경 포트에서)
-            PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
+            if [ "$INITIAL_DEPLOYMENT" = "true" ] && [ "$CURRENT_ENV" = "" ]; then
+              # 첫 배포이고 기존 환경이 없는 경우
+              echo "첫 배포를 블루 환경으로 시작합니다."
+              PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
+            else
+              # 일반적인 배포
+              PORT=$NEW_PORT pm2 start npm --name "amp-frontend-$NEW_ENV" -- start
+            fi
+
+            # 새 프로세스 상태 확인
+            echo "새 프로세스 상태:"
+            pm2 list
 
             # 새 버전이 정상적으로 시작되었는지 확인
             echo "새 버전 상태 확인 중..."
@@ -149,10 +209,25 @@ jobs:
               sleep $HEALTH_CHECK_INTERVAL
               echo "헬스체크 시도 #$((RETRY_COUNT+1))..."
               
+              # 새 프로세스 로그 캡처 (오류 진단용)
+              echo "프로세스 로그 확인 중:"
+              pm2 logs --lines 5 amp-frontend-$NEW_ENV --nostream
+              
               HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$NEW_PORT)
+              echo "헬스체크 응답 코드: $HEALTH_CHECK"
               
               if [ "$HEALTH_CHECK" = "200" ]; then
                 echo "새 버전($NEW_ENV) 정상 작동 확인 (HTTP 상태: $HEALTH_CHECK)"
+                
+                # Nginx 설정 업데이트 여부 확인
+                if [ "$INITIAL_DEPLOYMENT" = "true" ] && [ "$CURRENT_ENV" = "" ]; then
+                  # 첫 배포인 경우, Nginx 설정이 필요할 수 있음
+                  echo "첫 배포인 경우, Nginx 설정 점검:"
+                  if [ ! -f "/etc/nginx/sites-available/amp-frontend" ]; then
+                    echo "Nginx 설정 파일이 없습니다. 새로 생성합니다."
+                    # 여기에 Nginx 설정 생성 명령 추가 (필요시)
+                  fi
+                fi
                 
                 # Nginx 설정 업데이트 (프록시 포트 변경)
                 echo "Nginx 설정 업데이트 중..."
@@ -164,9 +239,11 @@ jobs:
                   echo "트래픽이 새 버전($NEW_ENV)으로 전환되었습니다."
                   
                   # 기존 버전 종료 (유예 시간 후)
-                  echo "10초 후 이전 버전($CURRENT_ENV) 종료..."
-                  sleep 10
-                  pm2 delete amp-frontend-$CURRENT_ENV 2>/dev/null || true
+                  if [ ! -z "$CURRENT_ENV" ]; then
+                    echo "10초 후 이전 버전($CURRENT_ENV) 종료..."
+                    sleep 10
+                    pm2 delete amp-frontend-$CURRENT_ENV 2>/dev/null || true
+                  fi
                   
                   # 백업 제거
                   rm -rf .next_backup
@@ -185,6 +262,8 @@ jobs:
             done
 
             echo "새 버전($NEW_ENV) 시작 실패, 롤백 수행 중..."
+            echo "실패한 프로세스 로그:"
+            pm2 logs --lines 20 amp-frontend-$NEW_ENV --nostream
 
             # 새 프로세스 제거
             pm2 delete amp-frontend-$NEW_ENV 2>/dev/null || true
@@ -194,6 +273,12 @@ jobs:
               rm -rf .next
               mv .next_backup .next
               echo "이전 빌드로 복구 완료"
+            fi
+
+            # 초기 배포가 아닌 경우, 기존 프로세스가 있는지 확인
+            if [ "$INITIAL_DEPLOYMENT" = "false" ] && [ ! -z "$CURRENT_ENV" ]; then
+              echo "기존 환경($CURRENT_ENV)이 정상 작동 중인지 확인..."
+              pm2 list
             fi
 
             echo "===== 롤백 완료: $(date) ====="
