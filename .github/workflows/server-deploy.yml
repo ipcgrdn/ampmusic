@@ -43,56 +43,241 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # 배포 시작 로그
-            echo "Deployment started..."
-
+            echo "=== 서버 블루-그린 배포 시작 ==="
+            
             # 프로젝트 디렉토리로 이동
             cd ~/amp_music/apps/server
-
+            
             # 변경사항 가져오기
             git fetch --all
             git reset --hard origin/main
-
-            # 기존 컨테이너 정리 (이름 충돌 방지)
-            docker ps -a | grep amp_backend && docker rm -f amp_backend || true
-
-            # Docker 이미지 및 컨테이너 정리
+            
+            # 현재 활성 환경 확인 (blue 또는 green)
+            CURRENT_ENV=""
+            CURRENT_PORT=""
+            NEW_ENV=""
+            NEW_PORT=""
+            
+            if docker ps | grep -q "amp_backend_blue"; then
+              CURRENT_ENV="blue"
+              CURRENT_PORT="4000"
+              NEW_ENV="green"
+              NEW_PORT="4001"
+              echo "현재 활성 환경: BLUE (포트: 4000)"
+            elif docker ps | grep -q "amp_backend_green"; then
+              CURRENT_ENV="green"
+              CURRENT_PORT="4001"
+              NEW_ENV="blue"
+              NEW_PORT="4000"
+              echo "현재 활성 환경: GREEN (포트: 4001)"
+            elif docker ps | grep -q "amp_backend"; then
+              # 기존 단일 컨테이너 환경 발견
+              echo "기존 단일 컨테이너 'amp_backend' 발견. 블루-그린 배포로 전환합니다."
+              CURRENT_ENV="legacy"
+              CURRENT_PORT="4000"  # 기존 컨테이너는 4000 포트 사용 중
+              NEW_ENV="blue"       # 첫 블루-그린 배포는 blue로 시작
+              NEW_PORT="4000"      # 동일한 포트 사용 (기존 컨테이너는 배포 전에 제거)
+            else
+              # 초기 배포 시 blue로 시작
+              CURRENT_ENV=""
+              CURRENT_PORT=""
+              NEW_ENV="blue"
+              NEW_PORT="4000"
+              echo "초기 배포: BLUE 환경으로 시작 (포트: 4000)"
+            fi
+            
+            # 기존 레거시 컨테이너 처리
+            if [ "$CURRENT_ENV" = "legacy" ]; then
+              echo "기존 레거시 컨테이너를 종료하고 블루-그린 배포를 시작합니다."
+              # 현재 설정 백업
+              sudo cp /etc/nginx/sites-available/api.ampmusic.im /etc/nginx/sites-available/api.ampmusic.im.backup.legacy
+              
+              # 기존 컨테이너의 이미지 태그 확인 (롤백을 위해)
+              LEGACY_IMAGE=$(docker inspect --format='{{.Config.Image}}' amp_backend)
+              echo "기존 이미지 정보 저장: $LEGACY_IMAGE"
+              
+              # 기존 컨테이너 종료 (도커 컴포즈 파일은 그대로 유지)
+              echo "기존 레거시 컨테이너 종료 중..."
+              docker stop amp_backend
+              docker rm amp_backend
+            fi
+            
+            # docker-compose 파일 수정 또는 생성
+            cat > docker-compose.${NEW_ENV}.yml << EOL
+            services:
+              backend:
+                build:
+                  context: .
+                  dockerfile: Dockerfile
+                container_name: amp_backend_${NEW_ENV}
+                ports:
+                  - "${NEW_PORT}:4000"
+                environment:
+                  - NODE_ENV=production
+                  - ELASTICSEARCH_URL=http://127.0.0.1:9200
+                  - REDIS_URL=redis://127.0.0.1:6379
+                  - PORT=4000
+                env_file:
+                  - .env
+                volumes:
+                  - ./uploads:/app/uploads
+                restart: unless-stopped
+                network_mode: "host"
+            EOL
+            
+            echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
+            
+            # 기존에 같은 이름의 컨테이너가 있다면 제거
+            if docker ps -a | grep -q "amp_backend_${NEW_ENV}"; then
+              echo "기존 ${NEW_ENV} 컨테이너 제거 중..."
+              docker rm -f amp_backend_${NEW_ENV}
+            fi
+            
+            # Docker 캐시 정리 (이미지 충돌 방지)
             docker system prune -f
-
-            # 컨테이너 재시작
-            docker-compose down
-            docker-compose up --build -d
-
-            # 배포 완료 확인
-            if [ $? -eq 0 ]; then
-              echo "Deployment successful!"
+            
+            # 새 환경 배포
+            echo "새 환경 ${NEW_ENV} 배포 시작..."
+            COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
+            docker-compose -f ${COMPOSE_FILE} build
+            docker-compose -f ${COMPOSE_FILE} up -d
+            
+            # 배포 완료 대기 (초기 안정화)
+            echo "새 버전 안정화 대기 중..."
+            sleep 10
+            
+            # 새 버전 헬스 체크
+            echo "새 버전 헬스 체크 시작..."
+            HEALTH_CHECK_PASS=false
+            
+            for i in {1..6}; do
+              echo "헬스 체크 시도 ${i}/6..."
+              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health || echo "000")
               
-              # 헬스 체크
-              echo "Waiting for server to start..."
-              for i in {1..6}; do
-                sleep 5
-                if curl -f http://localhost:4000/health; then
-                  echo "Health check passed!"
-                  exit 0
-                fi
-                echo "Attempt $i: Health check failed, retrying..."
-              done
+              if [[ "$RESPONSE_CODE" == "200" ]]; then
+                echo "헬스 체크 성공! (응답 코드: ${RESPONSE_CODE})"
+                HEALTH_CHECK_PASS=true
+                break
+              fi
               
-              echo "Health check failed after all attempts, rolling back..."
-              docker-compose down
+              echo "헬스 체크 실패 (응답 코드: ${RESPONSE_CODE}), 재시도 중..."
+              sleep 5
+            done
+            
+            if [ "$HEALTH_CHECK_PASS" = true ]; then
+              echo "새 버전 검증 완료, 트래픽 전환 준비..."
               
-              if [ ! -z "$CURRENT_IMAGE" ]; then
-                # 롤백 전 기존 컨테이너 제거
-                docker ps -a | grep amp_backend && docker rm -f amp_backend || true
+              # Nginx 설정 업데이트
+              sudo cp /etc/nginx/sites-available/api.ampmusic.im /etc/nginx/sites-available/api.ampmusic.im.backup
+              
+              sudo bash -c "cat > /etc/nginx/sites-available/api.ampmusic.im << 'EOL'
+            server {
+                listen 80;
+                server_name api.ampmusic.im;
+            
+                # 파일 업로드 크기 제한 설정 (25MB로 설정)
+                client_max_body_size 25M;
+            
+                location / {
+                    proxy_pass http://localhost:${NEW_PORT};
+                    proxy_http_version 1.1;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                    proxy_set_header Upgrade \$http_upgrade;
+                    proxy_set_header Connection \"upgrade\";
+            
+                    # CORS 설정
+                    add_header Access-Control-Allow-Origin \"https://ampmusic.im\" always;
+                    add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE\" always;
+                    add_header Access-Control-Allow-Headers \"DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-XSRF-TOKEN\" always;
+                    add_header Access-Control-Expose-Headers \"Content-Length,Content-Range\" always;
+            
+                    # OPTIONS 요청 처리
+                    if (\$request_method = 'OPTIONS') {
+                        add_header Access-Control-Allow-Origin \"https://ampmusic.im\" always;
+                        add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE\" always;
+                        add_header Access-Control-Allow-Headers \"DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-XSRF-TOKEN\" always;
+                        add_header Access-Control-Max-Age 1728000;
+                        add_header Content-Type 'text/plain charset=UTF-8';
+                        add_header Content-Length 0;
+                        return 204;
+                    }
+                }
+            }
+            EOL"
+              
+              # Nginx 설정 유효성 검사 및 리로드
+              sudo nginx -t
+              if [ $? -eq 0 ]; then
+                echo "Nginx 설정 유효성 검사 통과, 설정 적용 중..."
+                sudo systemctl reload nginx
                 
+                echo "트래픽을 ${NEW_ENV} 환경(포트: ${NEW_PORT})으로 전환 완료"
+                
+                # 이전 환경 유지 (그레이스 기간 - 롤백 가능성)
+                if [ ! -z "$CURRENT_ENV" ]; then
+                  echo "이전 환경(${CURRENT_ENV})은 10초 동안 유지 후 종료됩니다..."
+                  sleep 10
+                  
+                  # 이전 환경 종료
+                  if docker ps | grep -q "amp_backend_${CURRENT_ENV}"; then
+                    echo "이전 환경(${CURRENT_ENV}) 종료 중..."
+                    docker rm -f amp_backend_${CURRENT_ENV}
+                  elif [ "$CURRENT_ENV" = "legacy" ] && docker ps | grep -q "amp_backend"; then
+                    echo "레거시 환경 종료 중..."
+                    docker rm -f amp_backend
+                  fi
+                fi
+                
+                # 기존 docker-compose.yml 백업 및 현재 설정 저장
+                if [ -f "docker-compose.yml" ]; then
+                  cp docker-compose.yml docker-compose.yml.backup
+                fi
+                
+                # 현재 동작 중인 환경 설정을 기본 docker-compose.yml로 저장
+                cp docker-compose.${NEW_ENV}.yml docker-compose.yml
+                echo "docker-compose 설정을 업데이트했습니다."
+                
+                echo "=== 서버 블루-그린 배포 성공 ==="
+                exit 0
+              else
+                echo "Nginx 설정 유효성 검사 실패, 롤백 진행..."
+                sudo cp /etc/nginx/sites-available/api.ampmusic.im.backup /etc/nginx/sites-available/api.ampmusic.im
+                sudo systemctl reload nginx
+                
+                # 새 배포 실패, 컨테이너 제거
+                docker rm -f amp_backend_${NEW_ENV}
+                
+                echo "Nginx 설정 오류로 인한 롤백 완료"
+                exit 1
+              fi
+            else
+              echo "새 버전 헬스 체크 실패, 롤백 진행..."
+              
+              # 새 배포 실패, 컨테이너 제거
+              docker rm -f amp_backend_${NEW_ENV}
+              
+              # 레거시 환경으로 롤백 처리
+              if [ "$CURRENT_ENV" = "legacy" ] && [ ! -z "$LEGACY_IMAGE" ]; then
+                echo "레거시 환경으로 롤백합니다..."
+                
+                # 레거시 이미지로 컨테이너 실행
                 docker run -d --network host --name amp_backend \
                   -v $(pwd)/uploads:/app/uploads \
                   -v $(pwd)/.env:/app/.env \
                   --restart unless-stopped \
-                  $CURRENT_IMAGE
+                  $LEGACY_IMAGE
+                
+                # Nginx 설정 복구
+                sudo cp /etc/nginx/sites-available/api.ampmusic.im.backup.legacy /etc/nginx/sites-available/api.ampmusic.im
+                sudo systemctl reload nginx
+                
+                echo "레거시 환경으로 롤백 완료"
               fi
-              exit 1
-            else
-              echo "Deployment failed!"
+              
+              echo "=== 서버 블루-그린 배포 실패, 롤백 완료 ==="
               exit 1
             fi
 
