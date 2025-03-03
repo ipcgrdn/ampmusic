@@ -71,19 +71,19 @@ export function NewReleases() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         {albums.slice(0, displayCount).map((album) => (
           <Link
             key={album.id}
             href={`/album/${album.id}`}
-            className="group relative bg-white/[0.02] backdrop-blur-xl rounded-2xl 
+            className="group relative bg-black/40 backdrop-blur-xl rounded-2xl 
               border border-white/[0.05] hover:border-white/[0.1] 
               transition-all duration-300 hover:transform hover:scale-[1.02]
               overflow-hidden"
           >
             <div
               className="absolute -inset-[1px] rounded-2xl bg-gradient-to-b 
-              from-white/[0.07] to-transparent opacity-0 group-hover:opacity-100 
+              from-black/50 to-transparent opacity-0 group-hover:opacity-100 
               transition-opacity duration-500"
             />
 

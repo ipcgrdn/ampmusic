@@ -81,7 +81,7 @@ export function NowPlayingView() {
         >
           {/* 앨범 아트워크 / 가사 토글 영역 */}
           <div
-            className="relative group w-[400px] mx-auto cursor-pointer"
+            className="relative group w-[300px] lg:w-[400px] mx-auto cursor-pointer"
             onClick={() => setShowLyrics(!showLyrics)}
           >
             {/* 배경 블러 효과 */}

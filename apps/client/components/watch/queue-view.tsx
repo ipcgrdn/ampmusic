@@ -315,7 +315,7 @@ export function QueueView() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="px-6 py-4 border-b border-white/[0.08] backdrop-blur-xl">
+      <div className="px-4 py-4 border-b border-white/[0.08] backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
             다음 트랙 ({queue.length})

@@ -40,7 +40,7 @@ export default function WatchPage() {
       <div className="relative flex flex-col lg:flex-row h-[calc(100vh-6rem)]">
         {/* 현재 재생 중인 트랙 정보 - 고정 */}
         <div className="flex-1 p-4 lg:p-8 lg:border-r border-white/[0.05] lg:overflow-hidden">
-          <div className="h-full backdrop-blur-md bg-white/[0.02] rounded-2xl border border-white/[0.05] p-6 lg:p-8">
+          <div className="h-full backdrop-blur-md bg-black/40 rounded-2xl border border-white/[0.05] p-6 lg:p-8">
             <NowPlayingView />
           </div>
         </div>
