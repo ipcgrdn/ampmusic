@@ -472,8 +472,8 @@ export function AudioPlayer() {
         </div>
 
         <div className={cn(
-          "relative mx-6",
-          isMobile ? "container mx-auto" : "px-0"
+          "relative",
+          isMobile ? "container mx-auto" : "w-full max-w-[100vw] px-4"
         )}>
           {isMobile ? (
             <div className="py-2 px-4">
@@ -531,10 +531,10 @@ export function AudioPlayer() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-6 py-3">
+            <div className="flex items-center justify-between w-full py-4">
               {/* 왼쪽 */}
-              <div className="flex items-center justify-start gap-4">
-                <div className="flex items-center gap-4 max-w-[600px] w-full">
+              <div className="w-[400px] flex items-center justify-start gap-4 pl-4">
+                <div className="flex items-center gap-4 w-full">
                   <div
                     className="relative h-10 w-10 rounded-lg overflow-hidden bg-white/5 flex-shrink-0 
                     shadow-lg shadow-black/20 hover:shadow-black/40 transition-all group"
@@ -581,7 +581,7 @@ export function AudioPlayer() {
               </div>
 
               {/* 중앙 */}
-              <div className="flex-1 flex justify-center items-center">
+              <div className="absolute left-1/2 -translate-x-1/2">
                 <div className="bg-white/10 rounded-2xl px-2">
                   <Button
                     onClick={toggleRepeatMode}
@@ -648,10 +648,10 @@ export function AudioPlayer() {
               </div>
 
               {/* 오른쪽 */}
-              <div className="flex items-center justify-end gap-2">
-              <div className="text-xs text-white/60 mr-2">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </div>
+              <div className="w-[400px] flex items-center justify-end gap-2 pr-4">
+                <div className="text-xs text-white/60 mr-2">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </div>
 
                 <div className="flex items-center">
                   <LikeButton type="track" id={currentTrack.id} />
