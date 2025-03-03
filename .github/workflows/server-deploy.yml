@@ -119,9 +119,7 @@ jobs:
                 env_file:
                   - .env
                 volumes:
-                  - type: bind
-                    source: ./uploads
-                    target: /app/uploads
+                  - ./uploads:/app/uploads:rw
                 restart: unless-stopped
             EOL
             
