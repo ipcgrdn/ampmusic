@@ -1,6 +1,7 @@
 import { IsString, IsOptional, IsDateString, IsArray } from 'class-validator';
 
 export class CreateTrackInAlbumDto {
+  id?: string;
   title: string;
   duration: number;
   audioUrl: string;
