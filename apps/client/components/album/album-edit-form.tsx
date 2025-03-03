@@ -43,7 +43,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn, formatDuration } from "@/lib/utils";
 import { EditUserTagInput } from "../tag/edit-user-tag-input";
 import { User } from "@/types/auth";
-
+import { getImageUrl } from "@/lib/utils";
 interface AlbumEditFormProps {
   album: Album;
   isOpen: boolean;
@@ -375,9 +375,16 @@ export function AlbumEditForm({
     try {
       setIsLoading(true);
 
+      // 트랙 순서 재정렬
+      const reorderedTracks = formData.tracks.map((track, index) => ({
+        ...track,
+        order: index + 1,
+      }));
+
       // releaseDate를 ISO 형식으로 변환
       const formattedData = {
         ...formData,
+        tracks: reorderedTracks,
         releaseDate: new Date(
           formData.releaseDate + "T00:00:00.000Z"
         ).toISOString(),
@@ -422,7 +429,7 @@ export function AlbumEditForm({
                 <div className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-white/10 to-white/5 border border-white/10">
                   {formData.coverImage ? (
                     <Image
-                      src={`${process.env.NEXT_PUBLIC_API_URL}${formData.coverImage}`}
+                      src={getImageUrl(formData.coverImage)}
                       alt="Album cover"
                       fill
                       className="object-cover"
