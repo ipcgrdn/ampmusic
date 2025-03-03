@@ -33,38 +33,38 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
   const { mutate: toggleFollow, isPending } = useMutation({
     mutationFn: () => followApi.toggle(userId),
     onMutate: async () => {
-      // 진행 중인 쿼리들을 취소
       await queryClient.cancelQueries({ queryKey: ["follow-status", userId] });
       await queryClient.cancelQueries({ queryKey: ["follow-counts", userId] });
       
-      // 이전 상태 저장
       const previousStatus = queryClient.getQueryData(["follow-status", userId]);
+      const willFollow = !(previousStatus as any)?.isFollowing;
       
       // Optimistic update
       queryClient.setQueryData(["follow-status", userId], (old: any) => ({
         ...old,
-        isFollowing: !old?.isFollowing
+        isFollowing: willFollow
       }));
       
       setIsOptimistic(true);
       
-      return { previousStatus };
+      return { previousStatus, willFollow };
     },
-    onError: (err, variables, context) => {
-      // 에러 발생 시 이전 상태로 롤백
+    onError: (_err, _variables, context) => {
       queryClient.setQueryData(["follow-status", userId], context?.previousStatus);
       setIsOptimistic(false);
       showToast("작업을 완료할 수 없습니다.", "error");
     },
-    onSuccess: (data) => {
+    onSuccess: (_data, _variables, context) => {
+      console.log('Follow toggle response:', _data);
+      // context에서 의도했던 상태 변경을 가져와서 사용
+      const willFollow = context?.willFollow;
       showToast(
-        data.isFollowing ? "팔로우했습니다." : "팔로우를 취소했습니다.",
+        willFollow ? "팔로우했습니다." : "팔로우를 취소했습니다.",
         "success"
       );
     },
     onSettled: () => {
       setIsOptimistic(false);
-      // 모든 관련 쿼리를 한 번에 무효화
       queryClient.invalidateQueries({
         queryKey: [["follow-status", userId], ["follow-counts", userId], ["followers", userId]]
       });

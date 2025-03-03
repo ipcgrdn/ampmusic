@@ -287,8 +287,8 @@ function ContactSection() {
     {
       icon: <IconMail className="w-5 h-5" />,
       label: "이메일",
-      value: "cejewe2002@gmail.com",
-      href: "mailto:cejewe2002@gmail.com",
+      value: "amp.from.vivian@gmail.com",
+      href: "mailto:amp.from.vivian@gmail.com",
     },
   ];
 
