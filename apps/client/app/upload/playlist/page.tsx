@@ -125,11 +125,11 @@ export default function CreatePlaylistPage() {
 
               {/* 플레이리스트 정보 섹션 */}
               <div
-                className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05]
-                backdrop-blur-sm transition-all group hover:bg-white/[0.04]"
+                className="relative p-6 rounded-2xl bg-black/40 border border-white/[0.03]
+                backdrop-blur-md transition-all group hover:bg-black/50"
               >
                 <div
-                  className="absolute -inset-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl
+                  className="absolute -inset-2 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-3xl
                   opacity-0 group-hover:opacity-100 transition-opacity blur-xl"
                 />
 

@@ -225,7 +225,14 @@ export default function AlbumPage() {
                   </div>
                 </div>
                 {album.description && (
-                  <p className="text-white/80 max-w-2xl">{album.description}</p>
+                  <div className="relative group">
+                    <p className="text-white/80 max-w-2xl line-clamp-2 group-hover:line-clamp-none transition-all duration-300">
+                      {album.description}
+                    </p>
+                    <div className="absolute bottom-0 right-0 bg-gradient-to-l from-black via-black/80 to-transparent px-2 text-xs text-white/60 group-hover:hidden">
+                      더보기...
+                    </div>
+                  </div>
                 )}
               </div>
 

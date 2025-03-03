@@ -49,8 +49,8 @@ export default function UploadPage() {
               <button
                 key={option.title}
                 onClick={() => router.push(option.href)}
-                className="group relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05]
-                  backdrop-blur-sm transition-all hover:bg-white/[0.04] text-left"
+                className="group relative p-6 rounded-2xl bg-black/40 border border-white/[0.03]
+                  backdrop-blur-md transition-all hover:bg-black/50 text-left"
               >
                 {/* Hover Effect */}
                 <div

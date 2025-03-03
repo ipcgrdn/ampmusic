@@ -151,11 +151,11 @@ export function AlbumUploadForm() {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
       {/* 앨범 커버 섹션 */}
       <div
-        className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05]
-        backdrop-blur-sm transition-all group hover:bg-white/[0.04]"
+        className="relative p-6 rounded-2xl bg-black/40 border border-white/[0.03]
+        backdrop-blur-md transition-all group hover:bg-black/50"
       >
         <div
-          className="absolute -inset-2 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-3xl
+          className="absolute -inset-2 bg-gradient-to-r from-purple-500/5 to-blue-500/5 rounded-3xl
           opacity-0 group-hover:opacity-100 transition-opacity blur-xl"
         />
 
@@ -186,11 +186,11 @@ export function AlbumUploadForm() {
 
       {/* 앨범 정보 섹션 */}
       <div
-        className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05]
-        backdrop-blur-sm transition-all group hover:bg-white/[0.04]"
+        className="relative p-6 rounded-2xl bg-black/40 border border-white/[0.03]
+        backdrop-blur-md transition-all group hover:bg-black/50"
       >
         <div
-          className="absolute -inset-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl
+          className="absolute -inset-2 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-3xl
           opacity-0 group-hover:opacity-100 transition-opacity blur-xl"
         />
 
@@ -238,11 +238,11 @@ export function AlbumUploadForm() {
 
       {/* 태그 입력 섹션 */}
       <div
-        className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05]
-        backdrop-blur-sm transition-all group hover:bg-white/[0.04]"
+        className="relative p-6 rounded-2xl bg-black/40 border border-white/[0.03]
+        backdrop-blur-md transition-all group hover:bg-black/50"
       >
         <div
-          className="absolute -inset-2 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-3xl
+          className="absolute -inset-2 bg-gradient-to-r from-indigo-500/5 to-blue-500/5 rounded-3xl
           opacity-0 group-hover:opacity-100 transition-opacity blur-xl"
         />
 
@@ -266,11 +266,11 @@ export function AlbumUploadForm() {
 
       {/* 트랙 업로드 섹션 */}
       <div
-        className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05]
-        backdrop-blur-sm transition-all group hover:bg-white/[0.04]"
+        className="relative p-6 rounded-2xl bg-black/40 border border-white/[0.03]
+        backdrop-blur-md transition-all group hover:bg-black/50"
       >
         <div
-          className="absolute -inset-2 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-3xl
+          className="absolute -inset-2 bg-gradient-to-r from-indigo-500/5 to-blue-500/5 rounded-3xl
           opacity-0 group-hover:opacity-100 transition-opacity blur-xl"
         />
 
@@ -307,9 +307,9 @@ export function AlbumUploadForm() {
       <Button
         type="submit"
         disabled={isLoading}
-        className="w-full h-14 bg-gradient-to-r from-white/10 to-white/20 
-          hover:from-white/20 hover:to-white/30 border border-white/[0.08]
-          hover:border-white/20 text-black text-lg font-medium rounded-xl shadow-lg
+        className="w-full h-14 bg-gradient-to-r from-black/40 to-black/60 
+          hover:from-black/50 hover:to-black/70 border border-white/[0.03]
+          hover:border-white/[0.08] text-white text-lg font-medium rounded-xl shadow-lg
           transition-all duration-300"
       >
         {isLoading ? (

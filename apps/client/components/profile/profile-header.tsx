@@ -193,9 +193,14 @@ export function ProfileHeader({ userId }: { userId: string }) {
                     )}
                   </div>
                   {profile.bio && (
-                    <p className="text-white/60 mb-4 max-w-2xl">
-                      {profile.bio}
-                    </p>
+                    <div className="relative group">
+                      <p className="text-white/60 mb-4 max-w-2xl line-clamp-2 group-hover:line-clamp-none transition-all duration-300">
+                        {profile.bio}
+                      </p>
+                      <div className="absolute bottom-0 right-0 bg-gradient-to-l from-black/80 via-black/50 to-transparent px-2 text-sm text-white/40 group-hover:opacity-0 transition-opacity">
+                        더보기...
+                      </div>
+                    </div>
                   )}
                   {profile.website && (
                     <a

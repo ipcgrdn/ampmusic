@@ -157,89 +157,86 @@ export function TopCharts() {
             key={track.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+            className="group relative backdrop-blur-md bg-white/[0.02] hover:bg-white/[0.05] 
+              border border-white/[0.05] rounded-xl overflow-hidden transition-all duration-300"
           >
-            <div className={cn(
-              "group relative overflow-hidden bg-white/[0.03] hover:bg-white/[0.07] backdrop-blur-xl rounded-lg p-3 transition-all duration-300",
-              "border border-white/[0.05]"
-            )}>
-              <div className="flex gap-3">
-                {/* Rank & Change Indicator */}
-                <div className="flex flex-col items-center justify-center w-12">
-                  <div className="text-lg font-semibold">#{index + 1}</div>
-                  {track.previousRank !== undefined && (
-                    <div className="text-xs mt-1">
-                      {track.previousRank > index + 1 ? (
-                        <span className="text-green-400 flex items-center">
-                          <span className="mr-0.5">↑</span>
-                          {track.previousRank - (index + 1)}
-                        </span>
-                      ) : track.previousRank < index + 1 ? (
-                        <span className="text-red-400 flex items-center">
-                          <span className="mr-0.5">↓</span>
-                          {index + 1 - track.previousRank}
-                        </span>
-                      ) : (
-                        <span className="text-white/40">-</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Album Cover */}
-                <div className="relative w-12 h-12 flex-shrink-0">
-                  <Image
-                    src={getImageUrl(track.album.coverImage)}
-                    alt={track.title}
-                    fill
-                    className="object-cover transition-transform duration-300 
-                      group-hover:scale-110"
-                  />
-                </div>
-
-                {/* Track Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm text-white/90 truncate">
-                    {track.title}
+            <div className="flex gap-3">
+              {/* Rank & Change Indicator */}
+              <div className="flex flex-col items-center justify-center w-12">
+                <div className="text-lg font-semibold">#{index + 1}</div>
+                {track.previousRank !== undefined && (
+                  <div className="text-xs mt-1">
+                    {track.previousRank > index + 1 ? (
+                      <span className="text-green-400 flex items-center">
+                        <span className="mr-0.5">↑</span>
+                        {track.previousRank - (index + 1)}
+                      </span>
+                    ) : track.previousRank < index + 1 ? (
+                      <span className="text-red-400 flex items-center">
+                        <span className="mr-0.5">↓</span>
+                        {index + 1 - track.previousRank}
+                      </span>
+                    ) : (
+                      <span className="text-white/40">-</span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <Link
-                      href={`/album/${track.album.id}`}
-                      className="text-white/60 hover:text-white/80 truncate"
-                    >
-                      {track.album.title}
-                    </Link>
-                    <span className="text-white/40">•</span>
-                    <Link
-                      href={`/${track.album.artist.id}`}
-                      className="text-white/60 hover:text-white/80 truncate"
-                    >
-                      {track.album.artist.name}
-                    </Link>
-                    <span className="text-white/40 hidden md:block">•</span>
-                    <div className="md:flex items-center gap-2 text-white/40 hidden">
-                      <span>{`${track.realtimePlays.toLocaleString()} plays`}</span>
-                      <span>•</span>
-                      <span>{`${track.realtimeLikes.toLocaleString()} likes`}</span>
-                    </div>
-                  </div>
-                </div>
+                )}
+              </div>
 
-                {/* Actions Container */}
-                <div className="flex items-center gap-2">
-                  {/* Play Button */}
-                  <button
-                    onClick={() => play(track as Track, tracks)}
-                    className="self-center opacity-0 group-hover:opacity-100 
-                      transition-opacity duration-300"
+              {/* Album Cover */}
+              <div className="relative w-12 h-12 flex-shrink-0">
+                <Image
+                  src={getImageUrl(track.album.coverImage)}
+                  alt={track.title}
+                  fill
+                  className="object-cover transition-transform duration-300 
+                    group-hover:scale-110"
+                />
+              </div>
+
+              {/* Track Info */}
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm text-white/90 truncate">
+                  {track.title}
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <Link
+                    href={`/album/${track.album.id}`}
+                    className="text-white/60 hover:text-white/80 truncate"
                   >
-                    <IconPlayerPlay className="w-5 h-5" />
-                  </button>
-
-                  {/* TrackActions 버튼 */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <TrackActions track={convertToTrack(track)} onAddToPlaylist={handleTrackAction} />
+                    {track.album.title}
+                  </Link>
+                  <span className="text-white/40">•</span>
+                  <Link
+                    href={`/${track.album.artist.id}`}
+                    className="text-white/60 hover:text-white/80 truncate"
+                  >
+                    {track.album.artist.name}
+                  </Link>
+                  <span className="text-white/40 hidden md:block">•</span>
+                  <div className="md:flex items-center gap-2 text-white/40 hidden">
+                    <span>{`${track.realtimePlays.toLocaleString()} plays`}</span>
+                    <span>•</span>
+                    <span>{`${track.realtimeLikes.toLocaleString()} likes`}</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Actions Container */}
+              <div className="flex items-center gap-2">
+                {/* Play Button */}
+                <button
+                  onClick={() => play(track as Track, tracks)}
+                  className="self-center opacity-0 group-hover:opacity-100 
+                    transition-opacity duration-300"
+                >
+                  <IconPlayerPlay className="w-5 h-5" />
+                </button>
+
+                {/* TrackActions 버튼 */}
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <TrackActions track={convertToTrack(track)} onAddToPlaylist={handleTrackAction} />
                 </div>
               </div>
             </div>

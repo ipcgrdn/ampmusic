@@ -56,8 +56,8 @@ export function SearchPageResults({ pages }: SearchPageResultsProps) {
       {/* 트랙 결과 */}
       {tracks.length > 0 && (
         <section
-          className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 
-          transition-all duration-300 hover:bg-white/[0.04]"
+          className="backdrop-blur-xl bg-black/40 border border-white/[0.03] rounded-2xl p-6 
+          transition-all duration-300 hover:bg-black/50"
         >
           <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-3">
             <IconMusic className="w-5 h-5 text-purple-400" />
@@ -76,8 +76,8 @@ export function SearchPageResults({ pages }: SearchPageResultsProps) {
       {/* 앨범 결과 */}
       {albums.length > 0 && (
         <section
-          className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 
-          transition-all duration-300 hover:bg-white/[0.04]"
+          className="backdrop-blur-xl bg-black/40 border border-white/[0.03] rounded-2xl p-6 
+          transition-all duration-300 hover:bg-black/50"
         >
           <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-3">
             <IconDisc className="w-5 h-5 text-purple-400" />
@@ -96,8 +96,8 @@ export function SearchPageResults({ pages }: SearchPageResultsProps) {
       {/* 플레이리스트 결과 */}
       {playlists.length > 0 && (
         <section
-          className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 
-          transition-all duration-300 hover:bg-white/[0.04]"
+          className="backdrop-blur-xl bg-black/40 border border-white/[0.03] rounded-2xl p-6 
+          transition-all duration-300 hover:bg-black/50"
         >
           <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-3">
             <IconPlaylist className="w-5 h-5 text-purple-400" />
@@ -116,8 +116,8 @@ export function SearchPageResults({ pages }: SearchPageResultsProps) {
       {/* 아티스트 결과 */}
       {users.length > 0 && (
         <section
-          className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 
-          transition-all duration-300 hover:bg-white/[0.04]"
+          className="backdrop-blur-xl bg-black/40 border border-white/[0.03] rounded-2xl p-6 
+          transition-all duration-300 hover:bg-black/50"
         >
           <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-3">
             <IconUser className="w-5 h-5 text-purple-400" />
