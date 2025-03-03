@@ -228,14 +228,14 @@ export class AlbumService {
         const existingTrackIds = album.tracks.map(track => track.id);
         
         // 새로운 트랙 생성
-        for (const [index, track] of tracks.entries()) {
-          if (index < existingTrackIds.length) {
+        for (const track of tracks) {
+          if (track.id && existingTrackIds.includes(track.id)) {
             // 기존 트랙 업데이트
             await prisma.track.update({
-              where: { id: existingTrackIds[index] },
+              where: { id: track.id },
               data: {
                 ...track,
-                order: index,
+                order: track.order,
               },
             });
           } else {
@@ -243,7 +243,6 @@ export class AlbumService {
             await prisma.track.create({
               data: {
                 ...track,
-                order: index,
                 album: { connect: { id } },
                 artist: { connect: { id: userId } },
               },
@@ -251,16 +250,15 @@ export class AlbumService {
           }
         }
 
-        // 남은 기존 트랙 삭제 (새로운 트랙 수가 더 적은 경우)
-        if (existingTrackIds.length > tracks.length) {
-          await prisma.track.deleteMany({
-            where: {
-              id: {
-                in: existingTrackIds.slice(tracks.length),
-              },
+        // 삭제된 트랙 처리
+        const updatedTrackIds = tracks.map(track => track.id).filter(Boolean);
+        await prisma.track.deleteMany({
+          where: {
+            id: {
+              in: existingTrackIds.filter(id => !updatedTrackIds.includes(id)),
             },
-          });
-        }
+          },
+        });
       }
 
       return updated;
