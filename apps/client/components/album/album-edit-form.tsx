@@ -280,26 +280,12 @@ export function AlbumEditForm({
 
     if (!over || active.id === over.id) return;
 
-    console.log('Drag End Debug:', {
-      activeId: active.id,
-      overId: over.id,
-      currentTracks: formData.tracks.map(t => ({
-        id: t.id,
-        title: t.title,
-        order: t.order
-      }))
-    });
-
-    const oldIndex =
-      formData.tracks?.findIndex(
-        (track) => (track.id || `new-${track.order}`) === active.id
-      ) ?? -1;
-    const newIndex =
-      formData.tracks?.findIndex(
-        (track) => (track.id || `new-${track.order}`) === over.id
-      ) ?? -1;
-
-    console.log('Track Indices:', { oldIndex, newIndex });
+    const oldIndex = formData.tracks?.findIndex(
+      (track) => (track.id || `new-${track.order}`) === active.id
+    ) ?? -1;
+    const newIndex = formData.tracks?.findIndex(
+      (track) => (track.id || `new-${track.order}`) === over.id
+    ) ?? -1;
 
     if (oldIndex !== -1 && newIndex !== -1 && formData.tracks) {
       const updatedTracks = arrayMove(formData.tracks, oldIndex, newIndex).map(
@@ -308,12 +294,6 @@ export function AlbumEditForm({
           order: index + 1,
         })
       );
-
-      console.log('Updated Tracks:', updatedTracks.map(t => ({
-        id: t.id,
-        title: t.title,
-        order: t.order
-      })));
 
       setFormData((prev) => ({ ...prev, tracks: updatedTracks }));
     }
@@ -395,20 +375,6 @@ export function AlbumEditForm({
         order: index + 1,
       }));
 
-      console.log('Submit Debug - Before API Call:', {
-        albumId: album.id,
-        originalTracks: formData.tracks.map(t => ({
-          id: t.id,
-          title: t.title,
-          order: t.order
-        })),
-        reorderedTracks: reorderedTracks.map(t => ({
-          id: t.id,
-          title: t.title,
-          order: t.order
-        }))
-      });
-
       // releaseDate를 ISO 형식으로 변환
       const formattedData = {
         ...formData,
@@ -418,39 +384,15 @@ export function AlbumEditForm({
         ).toISOString(),
       };
 
-      const response = await updateAlbum(album.id, {
+      await updateAlbum(album.id, {
         ...formattedData,
         taggedUserIds: formData.taggedUserIds,
-      });
-
-      console.log('Submit Debug - API Response:', {
-        success: true,
-        updatedAlbum: {
-          id: response.id,
-          tracks: response.tracks?.map(t => ({
-            id: t.id,
-            title: t.title,
-            order: t.order
-          }))
-        }
       });
 
       showToast("앨범이 수정되었습니다", "success");
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Submit Debug - Error:', {
-        error,
-        requestData: {
-          albumId: album.id,
-          tracks: formData.tracks.map(t => ({
-            id: t.id,
-            title: t.title,
-            order: t.order
-          }))
-        }
-      });
-
       showToast(
         error instanceof Error ? error.message : "앨범 수정에 실패했습니다",
         "error"

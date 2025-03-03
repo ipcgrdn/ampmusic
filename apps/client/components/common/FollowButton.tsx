@@ -17,6 +17,7 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
   const queryClient = useQueryClient();
   const [isOptimistic, setIsOptimistic] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
 
   const { data: followStatus } = useQuery({
@@ -34,6 +35,7 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
     mutationFn: () => followApi.toggle(userId),
     onMutate: () => {
       setIsOptimistic(true);
+      setIsLoading(true);
     },
     onSuccess: (data) => {
       showToast(
@@ -46,6 +48,7 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
     },
     onSettled: () => {
       setIsOptimistic(false);
+      setIsLoading(false);
       queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
       queryClient.invalidateQueries({ queryKey: ["follow-counts", userId] });
       queryClient.invalidateQueries({ queryKey: ["followers", userId] });
@@ -54,11 +57,17 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
 
   const isFollowing = isOptimistic ? !followStatus?.isFollowing : followStatus?.isFollowing;
 
+  const handleClick = () => {
+    if (isLoading) return;
+    toggleFollow();
+  };
+
   return (
     <button
-      onClick={() => toggleFollow()}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      disabled={isLoading}
       aria-label={isFollowing ? "팔로우 취소" : "팔로우"}
       title={isFollowing ? "팔로우 취소" : "팔로우"}
       className={cn(
