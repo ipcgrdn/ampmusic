@@ -17,7 +17,6 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
   const queryClient = useQueryClient();
   const [isOptimistic, setIsOptimistic] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
 
   const { data: followStatus } = useQuery({
@@ -31,11 +30,31 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
     enabled: showCount,
   });
 
-  const { mutate: toggleFollow } = useMutation({
+  const { mutate: toggleFollow, isPending } = useMutation({
     mutationFn: () => followApi.toggle(userId),
-    onMutate: () => {
+    onMutate: async () => {
+      // 진행 중인 쿼리들을 취소
+      await queryClient.cancelQueries({ queryKey: ["follow-status", userId] });
+      await queryClient.cancelQueries({ queryKey: ["follow-counts", userId] });
+      
+      // 이전 상태 저장
+      const previousStatus = queryClient.getQueryData(["follow-status", userId]);
+      
+      // Optimistic update
+      queryClient.setQueryData(["follow-status", userId], (old: any) => ({
+        ...old,
+        isFollowing: !old?.isFollowing
+      }));
+      
       setIsOptimistic(true);
-      setIsLoading(true);
+      
+      return { previousStatus };
+    },
+    onError: (err, variables, context) => {
+      // 에러 발생 시 이전 상태로 롤백
+      queryClient.setQueryData(["follow-status", userId], context?.previousStatus);
+      setIsOptimistic(false);
+      showToast("작업을 완료할 수 없습니다.", "error");
     },
     onSuccess: (data) => {
       showToast(
@@ -43,22 +62,19 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
         "success"
       );
     },
-    onError: () => {
-      showToast("작업을 완료할 수 없습니다.", "error");
-    },
     onSettled: () => {
       setIsOptimistic(false);
-      setIsLoading(false);
-      queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
-      queryClient.invalidateQueries({ queryKey: ["follow-counts", userId] });
-      queryClient.invalidateQueries({ queryKey: ["followers", userId] });
+      // 모든 관련 쿼리를 한 번에 무효화
+      queryClient.invalidateQueries({
+        queryKey: [["follow-status", userId], ["follow-counts", userId], ["followers", userId]]
+      });
     },
   });
 
   const isFollowing = isOptimistic ? !followStatus?.isFollowing : followStatus?.isFollowing;
 
   const handleClick = () => {
-    if (isLoading) return;
+    if (isPending) return;
     toggleFollow();
   };
 
@@ -67,7 +83,7 @@ export function FollowButton({ userId, className, showCount = false }: FollowBut
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      disabled={isLoading}
+      disabled={isPending}
       aria-label={isFollowing ? "팔로우 취소" : "팔로우"}
       title={isFollowing ? "팔로우 취소" : "팔로우"}
       className={cn(
