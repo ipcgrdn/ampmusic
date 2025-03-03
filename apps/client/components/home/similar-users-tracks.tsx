@@ -141,7 +141,7 @@ export function SimilarUsersTracks() {
               >
                 <div className="relative flex gap-4 p-4">
                   <div className="relative">
-                    <div className="relative w-24 h-24 rounded-lg overflow-hidden">
+                    <div className="relative w-12 h-12 md:w-24 md:h-24 rounded-lg overflow-hidden">
                       <Image
                         src={getImageUrl(track.album.coverImage)}
                         alt={track.title}

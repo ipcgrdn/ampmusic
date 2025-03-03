@@ -55,7 +55,7 @@ export function FollowingUpdates() {
                   hover:bg-white/[0.05] hover:border-white/20 transition-all duration-300 overflow-hidden"
           >
             <div className="flex gap-4 p-4">
-              <div className="relative w-20 h-20 rounded-lg overflow-hidden">
+              <div className="relative w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden">
                 <Image
                   src={getImageUrl(update.item.coverImage)}
                   alt={update.item.title}
@@ -82,11 +82,11 @@ export function FollowingUpdates() {
                     <AvatarImage src={update.user.avatar} />
                     <AvatarFallback>{update.user.name[0]}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-white/60">
+                  <span className="text-xs md:text-sm text-white/60">
                     {update.user.name}
                   </span>
-                  <span className="text-sm text-white/40">•</span>
-                  <span className="text-sm text-white/40">
+                  <span className="text-xs md:text-sm text-white/40">•</span>
+                  <span className="text-xs md:text-sm text-white/40">
                     {formatDistanceToNow(new Date(update.createdAt), {
                       addSuffix: true,
                       locale: ko,

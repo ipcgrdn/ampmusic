@@ -185,12 +185,12 @@ export default function ProfilePage() {
                         </Link>
                       </div>
                     </div>
-                    <div className="w-20 text-right flex-shrink-0">
+                    <div className="hidden md:block w-20 text-right flex-shrink-0">
                       <span className="text-sm text-white/40">
                         {formatDuration(track.duration)}
                       </span>
                     </div>
-                    <div className="w-12 pl-4">
+                    <div className="hidden md:block w-12 pl-4">
                       <LikeButton
                         type="track"
                         id={track.id}
@@ -198,7 +198,7 @@ export default function ProfilePage() {
                         showCount={true}
                       />
                     </div>
-                    <div className="pl-4 flex items-center gap-4">
+                    <div className="pl-4 hidden md:flex items-center gap-4">
                       <IconHeadphones size={16} className="text-white/40" />
                       <span className="text-white/40 text-xs">
                         {track.plays?.toLocaleString() || 0}
@@ -288,7 +288,7 @@ export default function ProfilePage() {
             <ProfileHeader userId={id as string} />
           </div>
           <div className="px-4 lg:px-8 py-6">
-            <div className="relative backdrop-blur-xl bg-white/5 rounded-2xl p-6 max-w-3xl mx-auto">
+            <div className="relative backdrop-blur-xl bg-white/5 rounded-2xl p-4 max-w-3xl mx-auto">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 pointer-events-none" />
               <div className="relative flex justify-around">
                 {[
@@ -320,7 +320,7 @@ export default function ProfilePage() {
                     onClick={stat.onClick}
                   >
                     <div
-                      className={`text-3xl font-bold bg-gradient-to-br 
+                      className={`text-md md:text-3xl font-bold bg-gradient-to-br 
                         ${
                           stat.isClickable
                             ? "from-[#e6c200] to-[#533483] group-hover:from-white group-hover:to-white/60"
@@ -331,7 +331,7 @@ export default function ProfilePage() {
                       <AnimatedNumber value={stat.count} />
                     </div>
                     <div
-                      className={`text-sm ${
+                      className={`text-xs md:text-sm ${
                         stat.isClickable
                           ? "text-white/80 group-hover:text-white/60"
                           : "text-white/60 group-hover:text-white/80"

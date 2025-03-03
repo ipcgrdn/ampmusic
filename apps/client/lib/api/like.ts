@@ -53,7 +53,7 @@ export const likeApi = {
   getUserLikes: async (userId: string, type?: LikeableType) => {
     const params = type ? `?type=${type}` : '';
     const response = await api.get<LikedItems>(`/likes/users/${userId}/likes${params}`);
-    console.log('API Response:', response.data);  // 응답 데이터 확인
+
     return response.data;
   }
 };

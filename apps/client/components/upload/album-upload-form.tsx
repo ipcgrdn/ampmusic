@@ -162,11 +162,11 @@ export function AlbumUploadForm() {
         <div className="relative space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white/90">앨범 커버</h3>
-              <p className="text-sm text-white/50">
+              <h3 className="text-sm md:text-lg font-semibold text-white/90">앨범 커버</h3>
+              <p className="text-xs md:text-sm text-white/50">
                 고화질 이미지를 사용하는 것을 추천드려요
               </p>
-              <p className="text-xs text-white/30">
+              <p className="text-xs md:text-sm text-white/30">
                 최대 5MB 제한, jpg/jpeg/png/webp 형식 지원
               </p>
             </div>
@@ -197,8 +197,8 @@ export function AlbumUploadForm() {
         <div className="relative space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white/90">앨범 정보</h3>
-              <p className="text-sm text-white/50">
+              <h3 className="text-sm md:text-lg font-semibold text-white/90">앨범 정보</h3>
+              <p className="text-xs md:text-sm text-white/50">
                 앨범에 대해 자세히 알려주세요
               </p>
             </div>
@@ -248,10 +248,10 @@ export function AlbumUploadForm() {
 
         <div className="relative space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-white/90">
+            <h3 className="text-sm md:text-lg font-semibold text-white/90">
               태그할 사용자
             </h3>
-            <p className="text-sm text-white/50">
+            <p className="text-xs md:text-sm text-white/50">
               앨범에 태그할 사용자를 선택해주세요 (선택)
             </p>
           </div>
@@ -277,11 +277,11 @@ export function AlbumUploadForm() {
         <div className="relative space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white/90">트랙 목록</h3>
-              <p className="text-sm text-white/50">
+              <h3 className="text-sm md:text-lg font-semibold text-white/90">트랙 목록</h3>
+              <p className="text-xs md:text-sm text-white/50">
                 앨범에 포함될 트랙들을 추가해주세요
               </p>
-              <p className="text-xs text-white/30">
+              <p className="text-xs md:text-sm text-white/30">
                 최대 20MB 제한, mp3/wav/flac/aac/ogg 형식 지원
               </p>
             </div>
@@ -319,7 +319,7 @@ export function AlbumUploadForm() {
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2">
-            <span>앨범 출시하기</span>
+            <span className="text-sm md:text-lg">앨범 출시하기</span>
             <span className="text-white/60">✨</span>
           </div>
         )}

@@ -60,7 +60,7 @@ export default function SearchPage() {
     <div className="container max-w-7xl mx-auto px-4 py-6 min-h-[calc(100vh-5rem)]">
       {/* 검색 헤더 */}
       <div className="mb-8 bg-white/[0.02] backdrop-blur-xl border border-white/[0.05] rounded-2xl p-6">
-        <h1 className="text-2xl font-bold flex items-center gap-3 text-white">
+        <h1 className="text-md md:text-2xl font-bold flex items-center gap-3 text-white">
           <IconSearch className="w-6 h-6 text-purple-400" />
           {query ? (
             <span className="bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">

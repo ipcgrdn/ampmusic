@@ -26,7 +26,7 @@ export default function Home() {
       <div className="absolute inset-0 bg-grid-white/[0.02] pointer-events-none -z-10" />
 
       <ScrollArea className="h-full">
-        <div className="relative px-6 py-8 lg:px-8 space-y-8 max-w-[1800px] mx-auto">
+        <div className="relative px-4 py-8 lg:px-8 space-y-8 max-w-[1800px] mx-auto">
           {/* 1. 팔로우한 유저들의 최신 업데이트 */}
           <motion.section
             initial={{ opacity: 0 }}

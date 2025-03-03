@@ -21,10 +21,10 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
         <button
           key={id}
           onClick={() => onTabChange(id as 'tracks' | 'albums' | 'playlists')}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors
+          className={`relative flex items-center gap-2 px-4 py-3 text-xs md:text-sm font-medium transition-colors
             ${activeTab === id ? 'text-white' : 'text-white/60 hover:text-white/80'}`}
         >
-          <Icon size={18} />
+          <Icon size={16} />
           {label}
           {activeTab === id && (
             <motion.div

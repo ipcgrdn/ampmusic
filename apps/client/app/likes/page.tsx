@@ -205,7 +205,7 @@ export default function LikesPage() {
     <PageTransition>
       <div className="min-h-screen w-full space-y-8 p-4 lg:p-8">
         {/* 헤더 섹션 */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/20 via-transparent to-orange-500/10 p-8 backdrop-blur-lg transition-all duration-300">
+        <div className="relative overflow-hidden rounded-2xl p-8 backdrop-blur-lg transition-all duration-300">
           <div className="absolute inset-0 backdrop-blur-xl" />
           <div className="relative flex items-center gap-6">
             <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md">

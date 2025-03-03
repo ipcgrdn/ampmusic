@@ -102,10 +102,10 @@ export default function CreatePlaylistPage() {
                 <div className="relative space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-white/90">
+                      <h3 className="text-sm md:text-lg font-semibold text-white/90">
                         플레이리스트 커버
                       </h3>
-                      <p className="text-sm text-white/50">
+                      <p className="text-xs md:text-sm text-white/50">
                         커버 이미지를 선택해주세요
                       </p>
                     </div>
@@ -136,10 +136,10 @@ export default function CreatePlaylistPage() {
                 <div className="relative space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-white/90">
+                      <h3 className="text-sm md:text-lg font-semibold text-white/90">
                         플레이리스트 정보
                       </h3>
-                      <p className="text-sm text-white/50">
+                      <p className="text-xs md:text-sm text-white/50">
                         플레이리스트에 대해 설명해주세요
                       </p>
                     </div>
@@ -206,10 +206,10 @@ export default function CreatePlaylistPage() {
 
                 <div className="relative space-y-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-white/90">
+                    <h3 className="text-sm md:text-lg font-semibold text-white/90">
                       태그할 사용자
                     </h3>
-                    <p className="text-sm text-white/50">
+                    <p className="text-xs md:text-sm text-white/50">
                       플레이리스트에 태그할 사용자를 선택해주세요 (선택)
                     </p>
                   </div>
@@ -238,7 +238,7 @@ export default function CreatePlaylistPage() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    <span>플레이리스트 만들기</span>
+                    <span className="text-sm md:text-lg">플레이리스트 만들기</span>
                     <span className="text-white/60">✨</span>
                   </div>
                 )}

@@ -216,8 +216,8 @@ export function TopCharts() {
                     >
                       {track.album.artist.name}
                     </Link>
-                    <span className="text-white/40">|</span>
-                    <div className="flex items-center gap-2 text-white/40">
+                    <span className="text-white/40 hidden md:block">•</span>
+                    <div className="md:flex items-center gap-2 text-white/40 hidden">
                       <span>{`${track.realtimePlays.toLocaleString()} plays`}</span>
                       <span>•</span>
                       <span>{`${track.realtimeLikes.toLocaleString()} likes`}</span>

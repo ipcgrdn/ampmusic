@@ -183,7 +183,7 @@ export function FollowingLikes() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {visibleActivities?.map((activity) => (
           <div
             key={activity.id}
@@ -224,7 +224,7 @@ export function FollowingLikes() {
               </div>
 
               {/* 유저 정보 */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col md:flex-row items-center gap-2">
                 <Link href={`/${activity.user.id}`}>
                   <Avatar className="h-6 w-6 border border-white/10">
                     <AvatarImage

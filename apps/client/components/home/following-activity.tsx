@@ -243,7 +243,7 @@ export function FollowingActivity() {
                     "flex items-center gap-3 p-2",
                     "bg-black/20 backdrop-blur-sm rounded-xl"
                   )}>
-                    <div className="relative w-16 h-16 shrink-0">
+                    <div className="relative w-12 h-12 md:w-16 md:h-16 shrink-0">
                       <Image
                         src={getImageUrl(activity.track.album.coverImage)}
                         alt={activity.track.album.title}

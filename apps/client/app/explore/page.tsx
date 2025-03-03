@@ -20,7 +20,7 @@ export default function ExplorePage() {
       <div className="absolute inset-0 bg-grid-white/[0.02] pointer-events-none -z-10" />
 
       <ScrollArea className="h-full">
-        <div className="relative px-6 py-8 lg:px-8 space-y-8 max-w-[1800px] mx-auto">
+        <div className="relative px-4 py-8 lg:px-8 space-y-8 max-w-[1800px] mx-auto">
           {/* 실시간 차트 섹션 */}
           <section>
             <div className="backdrop-blur-xl bg-white/[0.02] rounded-2xl border border-white/[0.05] shadow-2xl">

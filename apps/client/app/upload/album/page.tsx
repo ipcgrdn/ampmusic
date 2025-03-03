@@ -26,8 +26,9 @@ export default function AlbumUploadPage() {
             </div>
 
             <div className="flex items-center justify-center">
-              <p className="text-md text-white font-bold">
-                AMP는 저작권 정책을 준수합니다.{" "}
+              <p className="text-xs md:text-sm text-white font-bold">
+                AMP는 저작권 정책을 준수합니다.
+                <br />
                 <Link
                   href="/docs/copyright"
                   className="text-purple-400 hover:text-purple-300"
@@ -59,11 +60,6 @@ export default function AlbumUploadPage() {
               <div className="relative">
                 <AlbumUploadForm />
               </div>
-            </div>
-
-            {/* Help Text */}
-            <div className="text-sm text-white/50 text-center px-4">
-              <p>지원 형식: MP3, WAV • 최대 파일 크기: 20MB</p>
             </div>
           </div>
         </div>

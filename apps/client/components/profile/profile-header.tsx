@@ -100,7 +100,7 @@ export function ProfileHeader({ userId }: { userId: string }) {
         className="relative rounded-2xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10"
       >
         <div className="p-6 lg:p-8">
-          <div className="flex items-start gap-6">
+          <div className="flex items-start flex-col sm:flex-row gap-6">
             <ProfileImageUploader
               userId={userId}
               currentAvatar={profile?.avatar || ""}
@@ -117,7 +117,7 @@ export function ProfileHeader({ userId }: { userId: string }) {
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-4">
-                      <h1 className="text-2xl lg:text-3xl font-bold text-white">
+                      <h1 className="text-2xl lg:text-3xl font-bold text-white mr-2">
                         {profile.name}
                       </h1>
                       {!isOwnProfile && (
@@ -146,15 +146,15 @@ export function ProfileHeader({ userId }: { userId: string }) {
                       )}
                     </div>
                     {isOwnProfile && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center justify-center">
                         <button
-                          className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+                          className="px-2 py-2 text-sm text-white/60 hover:text-white transition-colors"
                           onClick={() => router.push("/likes")}
                         >
                           <IconHeart size={20} />
                         </button>
                         <button
-                          className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+                          className="px-2 py-2 text-sm text-white/60 hover:text-white transition-colors"
                           onClick={async () => {
                             await navigator.clipboard.writeText(
                               `${process.env.NEXT_PUBLIC_APP_URL}/${profile.id}`
@@ -179,13 +179,13 @@ export function ProfileHeader({ userId }: { userId: string }) {
                         </button>
                         <button
                           onClick={() => setIsEditing(true)}
-                          className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+                          className="px-2 py-2 text-sm text-white/60 hover:text-white transition-colors"
                         >
                           <IconEdit size={20} />
                         </button>
                         <button
                           onClick={() => router.push("/settings")}
-                          className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+                          className="px-2 py-2 text-sm text-white/60 hover:text-white transition-colors"
                         >
                           <IconSettings size={20} />
                         </button>

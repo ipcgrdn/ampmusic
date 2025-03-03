@@ -205,7 +205,7 @@ export default function AlbumPage() {
               <div className="flex-1 space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">
                       {album?.title}
                     </h1>
                     <div className="flex items-center gap-2 text-white/60">
