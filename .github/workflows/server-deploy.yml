@@ -155,8 +155,24 @@ jobs:
                 fi
               fi
               
+              # DB_URL에 프로토콜이 없는 경우 추가
+              if ! echo "$DB_URL" | grep -q "^\"*postgresql://\|^\"*postgres://"; then
+                echo "DATABASE_URL에 프로토콜이 없습니다. postgresql:// 프로토콜을 추가합니다."
+                # 따옴표가 있는 경우 처리
+                if [[ "$DB_URL" == \"* ]]; then
+                  DB_URL="\"postgresql://${DB_URL:1}"
+                else
+                  DB_URL="postgresql://$DB_URL"
+                fi
+                echo "수정된 DATABASE_URL: ${DB_URL:0:20}...${DB_URL: -10}"
+              fi
+              
               # docker-compose 파일에 직접 DATABASE_URL 추가
               sed -i "/- PORT=\${NEW_PORT}/a \                  - DATABASE_URL=${DB_URL}" docker-compose.${NEW_ENV}.yml
+              
+              # .env 파일의 DATABASE_URL도 업데이트 (Prisma가 .env 파일에서 읽기 때문에)
+              sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DB_URL}|" .env
+              echo "수정된 .env 파일의 DATABASE_URL 업데이트 완료"
             else
               echo "경고: .env 파일에 DATABASE_URL이 설정되어 있지 않습니다."
             fi
