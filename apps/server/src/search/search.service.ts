@@ -171,19 +171,19 @@ export class SearchService {
 
       // 결과 ID 추출 및 분류
       const albumIds = response.hits.hits
-        .filter((hit) => hit._index === 'albums')
+        .filter((hit) => hit._index === 'albums_new')
         .map((hit) => hit._id);
 
       const trackIds = response.hits.hits
-        .filter((hit) => hit._index === 'tracks')
+        .filter((hit) => hit._index === 'tracks_new')
         .map((hit) => hit._id);
 
       const playlistIds = response.hits.hits
-        .filter((hit) => hit._index === 'playlists')
+        .filter((hit) => hit._index === 'playlists_new')
         .map((hit) => hit._id);
 
       const userIds = response.hits.hits
-        .filter((hit) => hit._index === 'users')
+        .filter((hit) => hit._index === 'users_new')
         .map((hit) => hit._id);
 
       // 데이터베이스에서 실제 데이터 조회 및 하이라이트 정보 추가
