@@ -70,21 +70,14 @@ export function SearchBar() {
     queryKey: ["search", debouncedValue, type, sort],
     queryFn: async () => {
       if (!debouncedValue) return null;
-      console.log('검색 요청 시작:', { query: debouncedValue, type, sort });
-      try {
-        const response = await api.get<SearchResponse>(`/search`, {
-          params: {
-            q: debouncedValue,
-            type,
-            sort,
-          },
-        });
-        console.log('검색 응답 받음:', { status: response.status, data: response.data ? '데이터 있음' : '데이터 없음' });
-        return response.data;
-      } catch (error) {
-        console.error('검색 요청 오류:', error);
-        throw error;
-      }
+      const response = await api.get<SearchResponse>(`/search`, {
+        params: {
+          q: debouncedValue,
+          type,
+          sort,
+        },
+      });
+      return response.data;
     },
     enabled: Boolean(debouncedValue)
   });
@@ -144,20 +137,10 @@ export function SearchBar() {
     queryKey: ["suggestions", debouncedValue],
     queryFn: async () => {
       if (!debouncedValue) return [];
-      console.log('자동완성 요청 시작:', { query: debouncedValue });
-      try {
-        const response = await api.get(`/search/suggest`, {
-          params: { q: debouncedValue }
-        });
-        console.log('자동완성 응답 받음:', { 
-          status: response.status,
-          suggestions: response.data?.length || 0
-        });
-        return response.data;
-      } catch (error) {
-        console.error('자동완성 요청 오류:', error);
-        throw error;
-      }
+      const response = await api.get(`/search/suggest`, {
+        params: { q: debouncedValue }
+      });
+      return response.data;
     },
     enabled: Boolean(debouncedValue) && debouncedValue.length > 1,
     staleTime: 1000 * 60, // 1분 동안 캐시 유지
