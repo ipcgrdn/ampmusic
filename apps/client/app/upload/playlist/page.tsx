@@ -238,7 +238,9 @@ export default function CreatePlaylistPage() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    <span className="text-sm md:text-lg">플레이리스트 만들기</span>
+                    <span className="text-sm md:text-lg">
+                      플레이리스트 만들기
+                    </span>
                     <span className="text-white/60">✨</span>
                   </div>
                 )}

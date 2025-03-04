@@ -25,10 +25,10 @@ export default function PrivacySettingsPage() {
             <IconLock className="w-5 h-5 text-purple-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-white group-hover:text-purple-400 transition-colors">
+            <h3 className="text-xs sm:text-sm font-medium text-white group-hover:text-purple-400 transition-colors">
               개인정보 처리방침
             </h3>
-            <p className="text-sm text-white/60">
+            <p className="text-xs sm:text-sm text-white/60">
               개인정보 수집 및 이용에 대한 안내를 확인합니다
             </p>
           </div>
@@ -44,10 +44,10 @@ export default function PrivacySettingsPage() {
             <IconCopyright className="w-5 h-5 text-purple-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-white group-hover:text-purple-400 transition-colors">
+            <h3 className="text-xs sm:text-sm font-medium text-white group-hover:text-purple-400 transition-colors">
               저작권 정책
             </h3>
-            <p className="text-sm text-white/60">
+            <p className="text-xs sm:text-sm text-white/60">
               저작권 관련 정책을 확인합니다
             </p>
           </div>
@@ -63,10 +63,10 @@ export default function PrivacySettingsPage() {
             <IconCookie className="w-5 h-5 text-purple-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-white group-hover:text-purple-400 transition-colors">
+            <h3 className="text-xs sm:text-sm font-medium text-white group-hover:text-purple-400 transition-colors">
               쿠키 정책
             </h3>
-            <p className="text-sm text-white/60">
+            <p className="text-xs sm:text-sm text-white/60">
               쿠키 사용에 대한 정책을 확인합니다
             </p>
           </div>

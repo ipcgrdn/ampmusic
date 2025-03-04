@@ -86,7 +86,7 @@ export function PopularPlaylists() {
 
               <div className="flex-1 flex flex-col justify-between mt-2 sm:mt-2.5">
                 <h3
-                  className="font-medium text-xs sm:text-sm text-white/90 truncate
+                  className="font-medium text-sm text-white/90 truncate
                   group-hover:text-white transition-colors duration-300"
                 >
                   {playlist.title}

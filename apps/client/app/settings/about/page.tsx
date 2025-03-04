@@ -89,7 +89,7 @@ export default function AboutPage() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-white group-hover:text-purple-400 
+                  <h3 className="text-xs sm:text-sm font-medium text-white group-hover:text-purple-400 
                     transition-colors">
                     {section.title}
                   </h3>
@@ -100,7 +100,7 @@ export default function AboutPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-white/60 mt-0.5">
+                <p className="text-xs sm:text-sm text-white/60 mt-0.5">
                   {section.description}
                 </p>
               </div>
@@ -128,8 +128,8 @@ export default function AboutPage() {
                 <IconInbox className="w-5 h-5 text-purple-400" />
               </div>
               <div className="text-left">
-                <div className="font-medium text-sm">내 문의 내역</div>
-                <div className="text-sm text-white/40">
+                <div className="font-medium text-xs sm:text-sm">내 문의 내역</div>
+                <div className="text-xs sm:text-sm text-white/40">
                   문의 내역을 확인하고 관리하세요
                 </div>
               </div>
@@ -153,8 +153,8 @@ export default function AboutPage() {
                   <IconInbox className="w-5 h-5 text-white" />
                 </div>
                 <div className="text-left">
-                  <div className="font-medium text-sm">전체 문의 관리</div>
-                  <div className="text-sm text-white/40">
+                  <div className="font-medium text-xs sm:text-sm">전체 문의 관리</div>
+                  <div className="text-xs sm:text-sm text-white/40">
                     관리자용 문의 관리 페이지로 이동
                   </div>
                 </div>

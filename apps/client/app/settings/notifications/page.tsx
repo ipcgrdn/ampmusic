@@ -183,8 +183,8 @@ export default function NotificationSettingsPage() {
       <div>
         <div className="flex items-center justify-between p-4 rounded-lg bg-white/[0.03] border border-white/10"> 
           <div className="space-y-1">
-            <h3 className="text-sm font-medium text-white">모든 알림</h3>
-            <p className="text-sm text-white/60">
+            <h3 className="text-xs sm:text-sm font-medium text-white">모든 알림</h3>
+            <p className="text-xs sm:text-sm text-white/60">
               모든 알림을 받습니다
             </p>
           </div>
@@ -205,8 +205,8 @@ export default function NotificationSettingsPage() {
             className="flex items-center justify-between p-4 rounded-lg bg-white/[0.03] border border-white/10 hover:bg-white/[0.04] transition-colors"
           >
             <div className="space-y-1">
-              <h3 className="text-sm font-medium text-white">{setting.title}</h3>
-              <p className="text-sm text-white/60">{setting.description}</p>
+              <h3 className="text-xs sm:text-sm font-medium text-white">{setting.title}</h3>
+              <p className="text-xs sm:text-sm text-white/60">{setting.description}</p>
             </div>
             <Switch
               checked={settings[setting.id]}

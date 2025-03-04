@@ -76,7 +76,7 @@ export function NewReleases() {
           <Link
             key={album.id}
             href={`/album/${album.id}`}
-            className="group relative bg-black/40 backdrop-blur-xl rounded-2xl 
+            className="group relative bg-black/40 backdrop-blur-lg rounded-2xl 
               border border-white/[0.05] hover:border-white/[0.1] 
               transition-all duration-300 hover:transform hover:scale-[1.02]
               overflow-hidden"
