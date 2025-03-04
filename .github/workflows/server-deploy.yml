@@ -167,19 +167,37 @@ jobs:
                 echo "수정된 DATABASE_URL: ${DB_URL:0:20}...${DB_URL: -10}"
               fi
               
-              # docker-compose 파일에 직접 DATABASE_URL 추가
+              # .env 파일 백업
+              cp .env .env.backup
+              
+              # 임시 파일에 환경 변수 정리하여 저장
+              grep -v "^DATABASE_URL=" .env > .env.tmp
+              echo "DATABASE_URL=${DB_URL}" >> .env.tmp
+              mv .env.tmp .env
+              
+              # .env 파일 내용 검증
+              echo "====== .env 파일 유효성 검사 ======"
+              cat .env | grep -v PASSWORD | head -n 10 || true
+              echo "====== .env 파일 검증 완료 ========"
+              
+              # 데이터베이스 URL 최종 확인
+              FINAL_DB_URL=$(grep "^DATABASE_URL=" .env | cut -d= -f2-)
+              echo "최종 DATABASE_URL 확인: ${FINAL_DB_URL:0:20}...${FINAL_DB_URL: -10}"
+              
+              # docker-compose 파일에 DATABASE_URL 직접 추가
               sed -i "/- PORT=\${NEW_PORT}/a \                  - DATABASE_URL=${DB_URL}" docker-compose.${NEW_ENV}.yml
               
-              # .env 파일의 DATABASE_URL도 업데이트 (Prisma가 .env 파일에서 읽기 때문에)
-              sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DB_URL}|" .env
-              echo "수정된 .env 파일의 DATABASE_URL 업데이트 완료"
+              echo ".env 파일의 DATABASE_URL을 새로 설정했습니다."
             else
               echo "경고: .env 파일에 DATABASE_URL이 설정되어 있지 않습니다."
             fi
             
-            # PORT 환경 변수가 docker-compose 파일과 일치하는지 확인
+            # PORT 환경 변수도 단순하게 처리
             echo "컨테이너 포트 확인 중: ${NEW_PORT}"
-            sed -i "s|PORT=4000|PORT=${NEW_PORT}|" .env
+            # 임시 파일에 PORT 설정
+            grep -v "^PORT=" .env > .env.tmp
+            echo "PORT=${NEW_PORT}" >> .env.tmp
+            mv .env.tmp .env
             echo "임시 .env 파일에 PORT=${NEW_PORT} 설정 완료"
             
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
@@ -215,8 +233,10 @@ jobs:
               docker build -t amp_backend:${NEW_ENV} .
               
               echo "컨테이너 실행 중..."
-              # 환경 변수 추출
-              DB_URL=$(grep DATABASE_URL .env | cut -d= -f2-)
+              # 환경 변수 추출 - 정확한 DATABASE_URL 사용
+              DB_URL=$(grep "^DATABASE_URL=" .env | cut -d= -f2-)
+              
+              echo "사용할 DATABASE_URL: ${DB_URL:0:20}...${DB_URL: -10}"
               
               # 컨테이너 직접 실행
               docker run -d --network host --name amp_backend_${NEW_ENV} \
@@ -245,9 +265,11 @@ jobs:
             echo "새 컨테이너 로그 확인 중..."
             docker logs amp_backend_${NEW_ENV} --tail 50 || true
 
-            # 프로세스 리스트 확인하여 포트 사용 확인
+            # 포트 사용 상태 확인 (netstat 대신 ss 사용)
             echo "포트 사용 상태 확인 중..."
-            netstat -tulpn | grep ${NEW_PORT} || true
+            ss -tulpn | grep ${NEW_PORT} || echo "ss 명령어를 사용할 수 없습니다"
+            # 대체 방법: lsof로 확인
+            lsof -i :${NEW_PORT} || echo "lsof 명령어를 사용할 수 없습니다"
             
             # 더 자세한 컨테이너 정보 확인
             echo "컨테이너 상태 확인 중..."
@@ -282,7 +304,8 @@ jobs:
               # 실패 시 추가 진단 로그 확인
               echo "실패 시 추가 진단 정보:"
               docker logs amp_backend_${NEW_ENV} --tail 20 || true
-              netstat -tulpn | grep ${NEW_PORT} || true
+              ss -tulpn | grep ${NEW_PORT} || echo "ss 명령어를 사용할 수 없습니다"
+              lsof -i :${NEW_PORT} || echo "lsof 명령어를 사용할 수 없습니다"
               
               sleep 10  # 5초에서 10초로 증가
             done
