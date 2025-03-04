@@ -41,8 +41,8 @@ jobs:
           host: ${{ secrets.BACKEND_HOST }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          env:
-            DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          envs: DATABASE_URL
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           script: |
             # 배포 시작 로그
             echo "=== 서버 블루-그린 배포 시작 ==="
