@@ -41,6 +41,9 @@ jobs:
           host: ${{ secrets.BACKEND_HOST }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: DATABASE_URL
+          env:
+            DATABASE_URL: ${{ secrets.DATABASE_URL }}
           script: |
             # 배포 시작 로그
             echo "=== 서버 블루-그린 배포 시작 ==="
@@ -102,6 +105,9 @@ jobs:
               docker rm amp_backend
             fi
 
+            # GitHub Actions Secret DATABASE_URL 정보 확인 (보안을 위해 부분만 표시)
+            echo "GitHub Secret DATABASE_URL 사용: ${DATABASE_URL:0:15}...${DATABASE_URL: -15}"
+
             # docker-compose 파일 수정 또는 생성
             cat > docker-compose.${NEW_ENV}.yml << EOL
             services:
@@ -116,8 +122,7 @@ jobs:
                   - ELASTICSEARCH_URL=http://127.0.0.1:9200
                   - REDIS_URL=redis://127.0.0.1:6379
                   - PORT=${NEW_PORT}
-                env_file:
-                  - .env
+                  - DATABASE_URL=${DATABASE_URL}
                 volumes:
                   - type: bind
                     source: ./uploads
@@ -125,47 +130,6 @@ jobs:
                 restart: unless-stopped
             EOL
 
-            # .env 파일 권한 수정 (임시로 읽기 권한 부여)
-            chmod 644 .env
-
-            # 환경 변수 확인 및 DATABASE_URL 직접 추가
-            if grep -q DATABASE_URL .env; then
-              # 환경 변수 값 추출 (잘라내기 방지를 위해 일부만 표시)
-              DB_URL=$(grep DATABASE_URL .env | cut -d= -f2-)
-              
-              # DATABASE_URL이 localhost를 가리키는지 확인
-              if echo "$DB_URL" | grep -q "@localhost:"; then
-                echo "경고: DATABASE_URL이 로컬호스트를 가리키고 있습니다. RDS 엔드포인트를 사용해야 합니다."
-                echo "현재 설정: $DB_URL"
-                echo "배포가 실패할 가능성이 높습니다!"
-              else
-                echo "설정된 DATABASE_URL 확인: ${DB_URL:0:10}...${DB_URL: -10}"
-              fi
-              
-              # DATABASE_URL에 RDS 연결 테스트
-              DB_HOST=$(echo "$DB_URL" | sed -E 's/.*@([^:]+):.*/\1/')
-              echo "데이터베이스 호스트: $DB_HOST"
-              
-              if [ ! -z "$DB_HOST" ] && [ "$DB_HOST" != "localhost" ]; then
-                echo "DB 연결 테스트 중..."
-                if nc -zv $DB_HOST 5432; then
-                  echo "데이터베이스 연결 성공!"
-                else
-                  echo "경고: 데이터베이스 연결 실패! 배포가 실패할 가능성이 높습니다."
-                fi
-              fi
-              
-              # docker-compose 파일에 직접 DATABASE_URL 추가
-              sed -i "/- PORT=\${NEW_PORT}/a \                  - DATABASE_URL=${DB_URL}" docker-compose.${NEW_ENV}.yml
-            else
-              echo "경고: .env 파일에 DATABASE_URL이 설정되어 있지 않습니다."
-            fi
-            
-            # PORT 환경 변수가 docker-compose 파일과 일치하는지 확인
-            echo "컨테이너 포트 확인 중: ${NEW_PORT}"
-            sed -i "s|PORT=4000|PORT=${NEW_PORT}|" .env
-            echo "임시 .env 파일에 PORT=${NEW_PORT} 설정 완료"
-            
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
 
             # 기존에 같은 이름의 컨테이너가 있다면 제거
@@ -182,50 +146,95 @@ jobs:
             COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
             if docker-compose -f ${COMPOSE_FILE} build && docker-compose -f ${COMPOSE_FILE} up -d; then
               echo "Docker Compose를 통한 배포 성공"
+              
+              # 배포 직후 로그 확인
+              echo "배포 직후 로그 확인 중..."
+              sleep 5 # 로그가 생성될 시간을 줌
+              docker logs amp_backend_${NEW_ENV} --tail 50 || true
             else
               echo "Docker Compose 배포 실패, 직접 Docker 실행으로 대체..."
+              
+              # 실패 원인 진단
+              echo "Docker Compose 실패 원인 진단 중..."
+              docker-compose -f ${COMPOSE_FILE} logs || true
               
               # Docker 직접 실행으로 대체
               echo "이미지 빌드 중..."
               docker build -t amp_backend:${NEW_ENV} .
               
               echo "컨테이너 실행 중..."
-              # 환경 변수 추출
-              DB_URL=$(grep DATABASE_URL .env | cut -d= -f2-)
               
-              # 컨테이너 직접 실행
+              # 컨테이너 직접 실행 (GitHub SECRET 사용)
               docker run -d --network host --name amp_backend_${NEW_ENV} \
                 -v $(pwd)/uploads:/app/uploads \
                 -e NODE_ENV=production \
                 -e ELASTICSEARCH_URL=http://127.0.0.1:9200 \
                 -e REDIS_URL=redis://127.0.0.1:6379 \
                 -e PORT=${NEW_PORT} \
-                -e DATABASE_URL="${DB_URL}" \
+                -e DATABASE_URL="${DATABASE_URL}" \
                 --restart unless-stopped \
                 amp_backend:${NEW_ENV}
+              
+              # 직접 실행 후 즉시 로그 확인
+              echo "직접 Docker 실행 후 로그 확인 중..."
+              sleep 5 # 로그가 생성될 시간을 줌
+              docker logs amp_backend_${NEW_ENV} --tail 50 || true
                 
               echo "Docker 직접 실행으로 컨테이너 생성 완료"
             fi
 
             # 배포 완료 대기 (초기 안정화)
             echo "새 버전 안정화 대기 중..."
-            sleep 10
+            sleep 30  # 충분한 안정화 시간 제공
 
             # 컨테이너 로그 확인
             echo "새 컨테이너 로그 확인 중..."
             docker logs amp_backend_${NEW_ENV} --tail 50 || true
 
-            # 환경 변수 상태 확인
+            # 포트 사용 상태 확인 (여러 방법 시도)
+            echo "포트 사용 상태 확인 중..."
+            if command -v ss &> /dev/null; then
+              ss -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
+            elif command -v netstat &> /dev/null; then
+              netstat -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
+            elif command -v lsof &> /dev/null; then
+              lsof -i :${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
+            else
+              echo "포트 확인 명령어를 사용할 수 없습니다"
+              
+              # 대안: 도커 컨테이너 포트 매핑 확인
+              docker port amp_backend_${NEW_ENV} || echo "컨테이너 포트 매핑 정보 없음"
+              
+              # 대체 진단 1: curl로 직접 확인
+              echo "curl로 포트 연결 테스트 중..."
+              curl -v --connect-timeout 3 http://localhost:${NEW_PORT} 2>&1 | grep "Connected to" || echo "curl로 연결 테스트 실패"
+              
+              # 대체 진단 2: 컨테이너 로그에서 포트 리스닝 정보 확인
+              echo "컨테이너 로그에서 포트 리스닝 정보 확인 중..."
+              docker logs amp_backend_${NEW_ENV} | grep -i "listen\|port\|${NEW_PORT}" | tail -5 || echo "로그에서 포트 정보를 찾을 수 없습니다"
+            fi
+            
+            # 컨테이너 상태 확인
+            echo "컨테이너 상태 확인 중..."
+            docker inspect amp_backend_${NEW_ENV} || true
+            
+            # 컨테이너 내 프로세스 확인
+            echo "컨테이너 내 프로세스 확인 중..."
+            docker top amp_backend_${NEW_ENV} || true
+
+            # 환경 변수 상태 확인 (보안 정보 제외)
             echo "컨테이너 내 환경 변수 확인 중..."
-            docker exec amp_backend_${NEW_ENV} env | grep -v PASSWORD || true
+            docker exec amp_backend_${NEW_ENV} env | grep -v PASSWORD | grep -v SECRET | grep -v DATABASE_URL || true
 
             # 새 버전 헬스 체크
             echo "새 버전 헬스 체크 시작..."
             HEALTH_CHECK_PASS=false
 
-            for i in {1..6}; do
-              echo "헬스 체크 시도 ${i}/6..."
-              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health || echo "000")
+            for i in {1..10}; do
+              echo "헬스 체크 시도 ${i}/10..."
+              
+              # curl 커맨드에 타임아웃 추가
+              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 http://localhost:${NEW_PORT}/health || echo "000")
               
               if [[ "$RESPONSE_CODE" == "200" ]]; then
                 echo "헬스 체크 성공! (응답 코드: ${RESPONSE_CODE})"
@@ -234,7 +243,31 @@ jobs:
               fi
               
               echo "헬스 체크 실패 (응답 코드: ${RESPONSE_CODE}), 재시도 중..."
-              sleep 5
+              
+              # 실패 시 추가 진단 로그 확인
+              echo "실패 시 추가 진단 정보:"
+              docker logs amp_backend_${NEW_ENV} --tail 20 || true
+              
+              # 포트 사용 상태 확인 (여러 방법 시도)
+              if command -v ss &> /dev/null; then
+                ss -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
+              elif command -v netstat &> /dev/null; then
+                netstat -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
+              elif command -v lsof &> /dev/null; then
+                lsof -i :${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
+              else
+                echo "포트 확인 명령어를 사용할 수 없습니다"
+                
+                # 대체 진단 1: curl로 직접 확인
+                echo "curl로 포트 연결 테스트 중..."
+                curl -v --connect-timeout 3 http://localhost:${NEW_PORT} 2>&1 | grep "Connected to" || echo "curl로 연결 테스트 실패"
+                
+                # 대체 진단 2: 컨테이너 로그에서 포트 리스닝 정보 확인
+                echo "컨테이너 로그에서 포트 리스닝 정보 확인 중..."
+                docker logs amp_backend_${NEW_ENV} | grep -i "listen\|port\|${NEW_PORT}" | tail -5 || echo "로그에서 포트 정보를 찾을 수 없습니다"
+              fi
+              
+              sleep 10
             done
 
             if [ "$HEALTH_CHECK_PASS" = true ]; then
@@ -339,8 +372,11 @@ jobs:
                 # 레거시 이미지로 컨테이너 실행
                 docker run -d --network host --name amp_backend \
                   -v $(pwd)/uploads:/app/uploads \
-                  -v $(pwd)/.env:/app/.env \
+                  -e NODE_ENV=production \
+                  -e ELASTICSEARCH_URL=http://127.0.0.1:9200 \
+                  -e REDIS_URL=redis://127.0.0.1:6379 \
                   -e PORT=4000 \
+                  -e DATABASE_URL="${DATABASE_URL}" \
                   --restart unless-stopped \
                   $LEGACY_IMAGE
                 
