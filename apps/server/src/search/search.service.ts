@@ -55,7 +55,10 @@ export class SearchService {
     sort: 'relevance' | 'newest' | 'popular',
   ): Promise<SearchResponse> {
     try {
+      console.log('검색 시작 - 쿼리:', query, '타입:', type, '정렬:', sort);
+      
       if (!query) {
+        console.log('쿼리가 비어있어 빈 결과 반환');
         return {
           albums: [],
           tracks: [],
@@ -68,7 +71,10 @@ export class SearchService {
         type === 'all' ? ['albums', 'tracks', 'playlists', 'users'] : [type];
       const sortConfig = this.getSortConfig(sort);
 
-      const response = await this.elasticsearchClient.search({
+      console.log('검색할 인덱스:', indices);
+      console.log('정렬 설정:', JSON.stringify(sortConfig));
+      
+      const searchParams = {
         index: indices,
         query: {
           bool: {
@@ -120,8 +126,15 @@ export class SearchService {
             name: {},
           },
         },
-      });
-
+      };
+      
+      console.log('ES 검색 쿼리:', JSON.stringify(searchParams));
+      
+      const response = await this.elasticsearchClient.search(searchParams);
+      
+      console.log('ES 응답 받음');
+      console.log('ES 응답 총 히트 수:', JSON.stringify(response.hits.total));
+      
       // 결과 ID 추출 및 하이라이트 정보 저장
       const hits = response.hits.hits as SearchHit[];
       const highlights = new Map<
@@ -204,6 +217,8 @@ export class SearchService {
 
       return { albums, tracks, playlists, users };
     } catch (error) {
+      console.error('검색 처리 중 오류 발생:', error);
+      console.error('오류 세부 정보:', JSON.stringify(error, null, 2));
       throw new InternalServerErrorException(
         '검색 처리 중 오류가 발생했습니다.',
       );
@@ -427,20 +442,31 @@ export class SearchService {
   }
 
   async getSuggestions(query: string) {
-    if (!query) return [];
-
     try {
+      console.log('자동완성 요청 시작 - 쿼리:', query);
+      
+      if (!query || query.length < 2) {
+        console.log('쿼리가 너무 짧아 빈 결과 반환');
+        return [];
+      }
+
+      // 1. 인덱스 존재 여부 확인
       const indices = ['albums', 'tracks', 'playlists', 'users'];
+      console.log('인덱스 존재 여부 확인 중:', indices);
       for (const index of indices) {
-        await this.elasticsearchClient.indices.exists({ index });
+        const exists = await this.elasticsearchClient.indices.exists({ index });
+        console.log(`인덱스 ${index} 존재 여부:`, exists);
       }
 
       // 2. 매핑 정보 확인
-      await this.elasticsearchClient.indices.getMapping({
+      console.log('현재 매핑 정보 확인 중...');
+      const mappings = await this.elasticsearchClient.indices.getMapping({
         index: indices,
       });
+      console.log('매핑 정보:', JSON.stringify(mappings));
 
-      const response = await this.elasticsearchClient.search<SuggestResponse>({
+      console.log('자동완성 쿼리 실행 준비:');
+      const suggestQuery = {
         index: indices,
         suggest: {
           title_suggestions: {
@@ -466,13 +492,23 @@ export class SearchService {
             },
           },
         },
-      });
-
+      };
+      
+      console.log('자동완성 ES 쿼리:', JSON.stringify(suggestQuery));
+      
+      const response = await this.elasticsearchClient.search<SuggestResponse>(suggestQuery);
+      
+      console.log('자동완성 응답 받음:', response ? '성공' : '실패');
+      
       const titleSuggestions = (response.suggest?.title_suggestions?.[0]
         ?.options || []) as SuggestionOption[];
+      
       const nameSuggestions = (response.suggest?.name_suggestions?.[0]
         ?.options || []) as SuggestionOption[];
-
+      
+      console.log('제목 제안 수:', titleSuggestions.length);
+      console.log('이름 제안 수:', nameSuggestions.length);
+      
       const suggestions = [...titleSuggestions, ...nameSuggestions].map(
         (option) => ({
           text: option.text,
@@ -483,9 +519,13 @@ export class SearchService {
 
       return suggestions.slice(0, 5);
     } catch (error) {
+      console.error('자동완성 요청 처리 오류:', error);
+      if (error.meta && error.meta.body) {
+        console.error('ES 오류 응답:', JSON.stringify(error.meta.body));
+      }
+      console.error('스택 트레이스:', error.stack);
       throw new InternalServerErrorException(
-        `자동완성 처리 중 오류가 발생했습니다: ${error.message}`,
-        error,
+        `자동완성 처리 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`,
       );
     }
   }
