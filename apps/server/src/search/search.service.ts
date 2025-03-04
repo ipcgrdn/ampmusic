@@ -314,24 +314,24 @@ export class SearchService {
                       'nori_readingform',
                       'lowercase',
                       'trim',
-                      'nori_part_of_speech'
-                    ]
+                      'nori_part_of_speech',
+                    ],
                   },
                   ngram_analyzer: {
                     type: 'custom',
                     tokenizer: 'ngram_tokenizer',
-                    filter: ['lowercase', 'trim']
-                  }
+                    filter: ['lowercase', 'trim'],
+                  },
                 },
                 tokenizer: {
                   ngram_tokenizer: {
                     type: 'ngram',
                     min_gram: 1,
                     max_gram: 2,
-                    token_chars: ['letter', 'digit']
-                  }
-                }
-              }
+                    token_chars: ['letter', 'digit'],
+                  },
+                },
+              },
             },
             mappings: {
               dynamic: 'strict',
@@ -341,22 +341,22 @@ export class SearchService {
                   analyzer: 'korean',
                   fields: {
                     keyword: { type: 'keyword' },
-                    ngram: { 
+                    ngram: {
                       type: 'text',
-                      analyzer: 'ngram_analyzer'
+                      analyzer: 'ngram_analyzer',
                     },
                     suggest: {
                       type: 'completion',
-                      analyzer: 'korean'
-                    }
-                  }
+                      analyzer: 'korean',
+                    },
+                  },
                 },
                 description: {
                   type: 'text',
                   analyzer: 'korean',
                   fields: {
-                    keyword: { type: 'keyword' }
-                  }
+                    keyword: { type: 'keyword' },
+                  },
                 },
                 name: {
                   type: 'text',
@@ -365,18 +365,18 @@ export class SearchService {
                     keyword: { type: 'keyword' },
                     suggest: {
                       type: 'completion',
-                      analyzer: 'korean'
-                    }
-                  }
+                      analyzer: 'korean',
+                    },
+                  },
                 },
                 email: { type: 'keyword' },
                 albumId: { type: 'keyword' },
                 createdAt: { type: 'date' },
                 updatedAt: { type: 'date' },
-                plays: { type: 'long' }
-              }
-            }
-          }
+                plays: { type: 'long' },
+              },
+            },
+          },
         });
       }
     }
@@ -430,40 +430,14 @@ export class SearchService {
     if (!query) return [];
 
     try {
-      console.log('자동완성 요청 시작:', { query });
-
-      // 1. 인덱스 존재 여부 확인
       const indices = ['albums', 'tracks', 'playlists', 'users'];
       for (const index of indices) {
-        const exists = await this.elasticsearchClient.indices.exists({ index });
-        console.log(`인덱스 ${index} 존재 여부:`, exists);
+        await this.elasticsearchClient.indices.exists({ index });
       }
 
       // 2. 매핑 정보 확인
-      const mappings = await this.elasticsearchClient.indices.getMapping({
-        index: indices
-      });
-      console.log('현재 인덱스 매핑:', JSON.stringify(mappings, null, 2));
-
-      // 3. 검색 요청 로깅
-      console.log('Elasticsearch 검색 요청:', {
-        indices,
-        suggest: {
-          title_suggestions: {
-            prefix: query,
-            completion: {
-              field: 'title.suggest',
-              size: 5
-            }
-          },
-          name_suggestions: {
-            prefix: query,
-            completion: {
-              field: 'name.suggest',
-              size: 5
-            }
-          }
-        }
+      await this.elasticsearchClient.indices.getMapping({
+        index: indices,
       });
 
       const response = await this.elasticsearchClient.search<SuggestResponse>({
@@ -494,26 +468,10 @@ export class SearchService {
         },
       });
 
-      // 4. 응답 데이터 로깅
-      console.log('Elasticsearch 응답:', {
-        took: response.took,
-        hits_total: response.hits?.total,
-        suggest: {
-          title_suggestions: response.suggest?.title_suggestions?.[0]?.options,
-          name_suggestions: response.suggest?.name_suggestions?.[0]?.options
-        }
-      });
-
       const titleSuggestions = (response.suggest?.title_suggestions?.[0]
         ?.options || []) as SuggestionOption[];
       const nameSuggestions = (response.suggest?.name_suggestions?.[0]
         ?.options || []) as SuggestionOption[];
-
-      // 5. 변환된 제안 데이터 로깅
-      console.log('제안 데이터 변환:', {
-        titleSuggestionsCount: titleSuggestions.length,
-        nameSuggestionsCount: nameSuggestions.length
-      });
 
       const suggestions = [...titleSuggestions, ...nameSuggestions].map(
         (option) => ({
@@ -523,32 +481,11 @@ export class SearchService {
         }),
       );
 
-      // 6. 최종 결과 로깅
-      console.log('최종 제안 결과:', {
-        totalSuggestions: suggestions.length,
-        suggestions: suggestions.slice(0, 5)
-      });
-
       return suggestions.slice(0, 5);
     } catch (error) {
-      // 7. 상세 에러 로깅
-      console.error('자동완성 처리 중 상세 오류:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause,
-        response: error.response?.body,
-        status: error.response?.statusCode,
-        meta: error.meta
-      });
-
-      // 8. 클라이언트에 더 자세한 에러 메시지 전달
       throw new InternalServerErrorException(
         `자동완성 처리 중 오류가 발생했습니다: ${error.message}`,
-        {
-          cause: error,
-          description: '자동완성 요청 처리 실패'
-        }
+        error,
       );
     }
   }
