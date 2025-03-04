@@ -159,12 +159,12 @@ export function TopCharts() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.05 }}
             className="group relative backdrop-blur-md bg-white/[0.02] hover:bg-white/[0.05] 
-              border border-white/[0.05] rounded-xl overflow-hidden transition-all duration-300"
+              border border-white/[0.05] rounded-xl overflow-hidden transition-all duration-300 py-2"
           >
             <div className="flex gap-3">
               {/* Rank & Change Indicator */}
               <div className="flex flex-col items-center justify-center w-12">
-                <div className="text-lg font-semibold">#{index + 1}</div>
+                <div className="text-md font-semibold">{index + 1}</div>
                 {track.previousRank !== undefined && (
                   <div className="text-xs mt-1">
                     {track.previousRank > index + 1 ? (

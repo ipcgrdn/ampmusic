@@ -57,40 +57,24 @@ jobs:
 
             # 현재 활성 환경 확인 (blue 또는 green)
             CURRENT_ENV=""
-            CURRENT_PORT=""
             NEW_ENV=""
-            NEW_PORT=""
+            PORT="4000"  # 항상 포트 4000 사용
 
             if docker ps | grep -q "amp_backend_blue"; then
               CURRENT_ENV="blue"
-              CURRENT_PORT="4000"
               NEW_ENV="green"
-              NEW_PORT="4001"
               echo "현재 활성 환경: BLUE (포트: 4000)"
             elif docker ps | grep -q "amp_backend_green"; then
               CURRENT_ENV="green"
-              CURRENT_PORT="4001"
               NEW_ENV="blue"
-              NEW_PORT="4000"
-              echo "현재 활성 환경: GREEN (포트: 4001)"
+              echo "현재 활성 환경: GREEN (포트: 4000)"
             elif docker ps | grep -q "amp_backend"; then
               # 기존 단일 컨테이너 환경 발견
               echo "기존 단일 컨테이너 'amp_backend' 발견. 블루-그린 배포로 전환합니다."
               CURRENT_ENV="legacy"
-              CURRENT_PORT="4000"  # 기존 컨테이너는 4000 포트 사용 중
               NEW_ENV="blue"       # 첫 블루-그린 배포는 blue로 시작
-              NEW_PORT="4000"      # 동일한 포트 사용 (기존 컨테이너는 배포 전에 제거)
-            else
-              # 초기 배포 시 blue로 시작
-              CURRENT_ENV=""
-              CURRENT_PORT=""
-              NEW_ENV="blue"
-              NEW_PORT="4000"
-              echo "초기 배포: BLUE 환경으로 시작 (포트: 4000)"
-            fi
-
-            # 기존 레거시 컨테이너 처리
-            if [ "$CURRENT_ENV" = "legacy" ]; then
+              
+              # 기존 레거시 컨테이너 처리
               echo "기존 레거시 컨테이너를 종료하고 블루-그린 배포를 시작합니다."
               # 현재 설정 백업
               sudo cp /etc/nginx/sites-available/api.ampmusic.im /etc/nginx/sites-available/api.ampmusic.im.backup.legacy
@@ -103,11 +87,20 @@ jobs:
               echo "기존 레거시 컨테이너 종료 중..."
               docker stop amp_backend
               docker rm amp_backend
+            else
+              # 초기 배포 시 blue로 시작
+              CURRENT_ENV=""
+              NEW_ENV="blue"
+              echo "초기 배포: BLUE 환경으로 시작 (포트: 4000)"
             fi
 
             # GitHub Actions Secret DATABASE_URL 정보 확인 (보안을 위해 부분만 표시)
             echo "GitHub Secret DATABASE_URL 사용: ${DATABASE_URL:0:15}...${DATABASE_URL: -15}"
 
+            # 다운타임 최소화를 위해 이미지를 먼저 준비
+            echo "배포 준비: 다운타임 최소화를 위해 이미지 미리 빌드 중..."
+            docker-compose -f docker-compose.yml build 2>/dev/null || echo "기존 docker-compose.yml 파일이 없습니다."
+            
             # docker-compose 파일 수정 또는 생성
             cat > docker-compose.${NEW_ENV}.yml << EOL
             services:
@@ -121,7 +114,7 @@ jobs:
                   - NODE_ENV=production
                   - ELASTICSEARCH_URL=http://127.0.0.1:9200
                   - REDIS_URL=redis://127.0.0.1:6379
-                  - PORT=${NEW_PORT}
+                  - PORT=${PORT}
                   - DATABASE_URL=${DATABASE_URL}
                 volumes:
                   - type: bind
@@ -130,7 +123,12 @@ jobs:
                 restart: unless-stopped
             EOL
 
-            echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
+            echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${PORT})"
+            
+            # 새 이미지 미리 빌드 (다운타임 최소화)
+            echo "새 이미지 미리 빌드 중..."
+            COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
+            docker-compose -f ${COMPOSE_FILE} build
 
             # 기존에 같은 이름의 컨테이너가 있다면 제거
             if docker ps -a | grep -q "amp_backend_${NEW_ENV}"; then
@@ -141,28 +139,25 @@ jobs:
             # Docker 캐시 정리 (이미지 충돌 방지)
             docker system prune -f
 
-            # 새 환경 배포
-            echo "새 환경 ${NEW_ENV} 배포 시작..."
-            COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
-            if docker-compose -f ${COMPOSE_FILE} build && docker-compose -f ${COMPOSE_FILE} up -d; then
+            # Nginx 설정 백업 생성
+            sudo cp /etc/nginx/sites-available/api.ampmusic.im /etc/nginx/sites-available/api.ampmusic.im.backup
+            
+            # 서비스 다운타임 시작 - 기존 컨테이너 중지
+            if [ ! -z "$CURRENT_ENV" ] && [ "$CURRENT_ENV" != "legacy" ]; then
+              echo "다운타임 시작: 기존 ${CURRENT_ENV} 컨테이너 중지 중..."
+              docker stop amp_backend_${CURRENT_ENV}
+              docker rm amp_backend_${CURRENT_ENV}
+            fi
+            
+            # 새 환경 배포 - 최대한 빠르게 실행
+            echo "새 환경 ${NEW_ENV} 배포 시작 (다운타임 최소화 중)..."
+            if docker-compose -f ${COMPOSE_FILE} up -d; then
               echo "Docker Compose를 통한 배포 성공"
-              
-              # 배포 직후 로그 확인
-              echo "배포 직후 로그 확인 중..."
-              sleep 5 # 로그가 생성될 시간을 줌
-              docker logs amp_backend_${NEW_ENV} --tail 50 || true
             else
               echo "Docker Compose 배포 실패, 직접 Docker 실행으로 대체..."
               
-              # 실패 원인 진단
-              echo "Docker Compose 실패 원인 진단 중..."
-              docker-compose -f ${COMPOSE_FILE} logs || true
-              
               # Docker 직접 실행으로 대체
-              echo "이미지 빌드 중..."
-              docker build -t amp_backend:${NEW_ENV} .
-              
-              echo "컨테이너 실행 중..."
+              echo "컨테이너 직접 실행 중..."
               
               # 컨테이너 직접 실행 (GitHub SECRET 사용)
               docker run -d --network host --name amp_backend_${NEW_ENV} \
@@ -170,61 +165,37 @@ jobs:
                 -e NODE_ENV=production \
                 -e ELASTICSEARCH_URL=http://127.0.0.1:9200 \
                 -e REDIS_URL=redis://127.0.0.1:6379 \
-                -e PORT=${NEW_PORT} \
+                -e PORT=${PORT} \
                 -e DATABASE_URL="${DATABASE_URL}" \
                 --restart unless-stopped \
                 amp_backend:${NEW_ENV}
-              
-              # 직접 실행 후 즉시 로그 확인
-              echo "직접 Docker 실행 후 로그 확인 중..."
-              sleep 5 # 로그가 생성될 시간을 줌
-              docker logs amp_backend_${NEW_ENV} --tail 50 || true
                 
               echo "Docker 직접 실행으로 컨테이너 생성 완료"
             fi
-
-            # 배포 완료 대기 (초기 안정화)
-            echo "새 버전 안정화 대기 중..."
-            sleep 30  # 충분한 안정화 시간 제공
-
-            # 컨테이너 로그 확인
-            echo "새 컨테이너 로그 확인 중..."
-            docker logs amp_backend_${NEW_ENV} --tail 50 || true
-
-            # 포트 사용 상태 확인 (여러 방법 시도)
-            echo "포트 사용 상태 확인 중..."
-            if command -v ss &> /dev/null; then
-              ss -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
-            elif command -v netstat &> /dev/null; then
-              netstat -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
-            elif command -v lsof &> /dev/null; then
-              lsof -i :${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
+            
+            # 빠른 초기 헬스 체크 (서비스 복구 확인)
+            echo "빠른 초기 헬스 체크 진행 중..."
+            INITIAL_CHECK=false
+            
+            for i in {1..5}; do
+              echo "초기 헬스 체크 시도 ${i}/5..."
+              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 http://localhost:${PORT}/health || echo "000")
+              
+              if [[ "$RESPONSE_CODE" == "200" ]]; then
+                echo "초기 헬스 체크 성공! 서비스 복구 완료 (응답 코드: ${RESPONSE_CODE})"
+                INITIAL_CHECK=true
+                break
+              fi
+              
+              echo "초기 헬스 체크 대기 중..."
+              sleep 2
+            done
+            
+            if [ "$INITIAL_CHECK" = true ]; then
+              echo "서비스가 성공적으로 복구되었습니다. 다운타임 종료."
             else
-              echo "포트 확인 명령어를 사용할 수 없습니다"
-              
-              # 대안: 도커 컨테이너 포트 매핑 확인
-              docker port amp_backend_${NEW_ENV} || echo "컨테이너 포트 매핑 정보 없음"
-              
-              # 대체 진단 1: curl로 직접 확인
-              echo "curl로 포트 연결 테스트 중..."
-              curl -v --connect-timeout 3 http://localhost:${NEW_PORT} 2>&1 | grep "Connected to" || echo "curl로 연결 테스트 실패"
-              
-              # 대체 진단 2: 컨테이너 로그에서 포트 리스닝 정보 확인
-              echo "컨테이너 로그에서 포트 리스닝 정보 확인 중..."
-              docker logs amp_backend_${NEW_ENV} | grep -i "listen\|port\|${NEW_PORT}" | tail -5 || echo "로그에서 포트 정보를 찾을 수 없습니다"
+              echo "초기 헬스 체크 실패, 하지만 계속 진행합니다..."
             fi
-            
-            # 컨테이너 상태 확인
-            echo "컨테이너 상태 확인 중..."
-            docker inspect amp_backend_${NEW_ENV} || true
-            
-            # 컨테이너 내 프로세스 확인
-            echo "컨테이너 내 프로세스 확인 중..."
-            docker top amp_backend_${NEW_ENV} || true
-
-            # 환경 변수 상태 확인 (보안 정보 제외)
-            echo "컨테이너 내 환경 변수 확인 중..."
-            docker exec amp_backend_${NEW_ENV} env | grep -v PASSWORD | grep -v SECRET | grep -v DATABASE_URL || true
 
             # 새 버전 헬스 체크
             echo "새 버전 헬스 체크 시작..."
@@ -234,7 +205,7 @@ jobs:
               echo "헬스 체크 시도 ${i}/10..."
               
               # curl 커맨드에 타임아웃 추가
-              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 http://localhost:${NEW_PORT}/health || echo "000")
+              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 http://localhost:${PORT}/health || echo "000")
               
               if [[ "$RESPONSE_CODE" == "200" ]]; then
                 echo "헬스 체크 성공! (응답 코드: ${RESPONSE_CODE})"
@@ -248,25 +219,6 @@ jobs:
               echo "실패 시 추가 진단 정보:"
               docker logs amp_backend_${NEW_ENV} --tail 20 || true
               
-              # 포트 사용 상태 확인 (여러 방법 시도)
-              if command -v ss &> /dev/null; then
-                ss -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
-              elif command -v netstat &> /dev/null; then
-                netstat -tulpn | grep ${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
-              elif command -v lsof &> /dev/null; then
-                lsof -i :${NEW_PORT} || echo "포트 ${NEW_PORT}에서 리스닝 중인 프로세스가 없습니다"
-              else
-                echo "포트 확인 명령어를 사용할 수 없습니다"
-                
-                # 대체 진단 1: curl로 직접 확인
-                echo "curl로 포트 연결 테스트 중..."
-                curl -v --connect-timeout 3 http://localhost:${NEW_PORT} 2>&1 | grep "Connected to" || echo "curl로 연결 테스트 실패"
-                
-                # 대체 진단 2: 컨테이너 로그에서 포트 리스닝 정보 확인
-                echo "컨테이너 로그에서 포트 리스닝 정보 확인 중..."
-                docker logs amp_backend_${NEW_ENV} | grep -i "listen\|port\|${NEW_PORT}" | tail -5 || echo "로그에서 포트 정보를 찾을 수 없습니다"
-              fi
-              
               sleep 10
             done
 
@@ -274,8 +226,6 @@ jobs:
               echo "새 버전 검증 완료, 트래픽 전환 준비..."
               
               # Nginx 설정 업데이트
-              sudo cp /etc/nginx/sites-available/api.ampmusic.im /etc/nginx/sites-available/api.ampmusic.im.backup
-              
               sudo bash -c "cat > /etc/nginx/sites-available/api.ampmusic.im << 'EOL'
             server {
                 listen 80;
@@ -285,7 +235,7 @@ jobs:
                 client_max_body_size 25M;
 
                 location / {
-                    proxy_pass http://localhost:${NEW_PORT};
+                    proxy_pass http://localhost:${PORT};
                     proxy_http_version 1.1;
                     proxy_set_header Host \$host;
                     proxy_set_header X-Real-IP \$remote_addr;
@@ -320,7 +270,7 @@ jobs:
                 echo "Nginx 설정 유효성 검사 통과, 설정 적용 중..."
                 sudo systemctl reload nginx
                 
-                echo "트래픽을 ${NEW_ENV} 환경(포트: ${NEW_PORT})으로 전환 완료"
+                echo "트래픽을 ${NEW_ENV} 환경(포트: ${PORT})으로 전환 완료"
                 
                 # 이전 환경 유지 (그레이스 기간 - 롤백 가능성)
                 if [ ! -z "$CURRENT_ENV" ]; then
