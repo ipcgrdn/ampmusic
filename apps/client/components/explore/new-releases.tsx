@@ -79,7 +79,7 @@ export function NewReleases() {
             className="group relative bg-black/40 backdrop-blur-lg rounded-2xl 
               border border-white/[0.05] hover:border-white/[0.1] 
               transition-all duration-300 hover:transform hover:scale-[1.02]
-              overflow-hidden"
+              overflow-hidden py-2"
           >
             <div
               className="absolute -inset-[1px] rounded-2xl bg-gradient-to-b 
