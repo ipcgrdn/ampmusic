@@ -21,15 +21,11 @@ RUN npm run build
 
 # Create necessary directories and set permissions
 RUN mkdir -p /app/uploads/audio /app/uploads/images /app/temp && \
-    chown -R node:node /app/uploads /app/temp && \
     chmod -R 755 /app/uploads /app/temp
 
 # Set execute permissions for ffmpeg and ffprobe
 RUN chmod +x /app/node_modules/@ffmpeg-installer/linux-x64/ffmpeg \
     && chmod +x /app/node_modules/@ffprobe-installer/linux-x64/ffprobe
-
-# Switch to non-root user
-USER node
 
 # Expose port
 EXPOSE 4000

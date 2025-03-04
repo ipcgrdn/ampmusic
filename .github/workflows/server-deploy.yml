@@ -123,6 +123,9 @@ jobs:
                 restart: unless-stopped
             EOL
 
+            # .env 파일 권한 수정 (임시로 읽기 권한 부여)
+            chmod 644 .env
+
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
 
             # 기존에 같은 이름의 컨테이너가 있다면 제거
@@ -143,6 +146,14 @@ jobs:
             # 배포 완료 대기 (초기 안정화)
             echo "새 버전 안정화 대기 중..."
             sleep 10
+
+            # 컨테이너 로그 확인
+            echo "새 컨테이너 로그 확인 중..."
+            docker logs amp_backend_${NEW_ENV} --tail 50 || true
+
+            # 환경 변수 상태 확인
+            echo "컨테이너 내 환경 변수 확인 중..."
+            docker exec amp_backend_${NEW_ENV} env | grep -v PASSWORD || true
 
             # 새 버전 헬스 체크
             echo "새 버전 헬스 체크 시작..."
