@@ -104,27 +104,27 @@ jobs:
             
             # docker-compose 파일 수정 또는 생성
             cat > docker-compose.${NEW_ENV}.yml << EOL
-version: '3.8'
-services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: amp_backend_${NEW_ENV}
-    network_mode: "host"
-    environment:
-      - NODE_ENV=production
-      - ELASTICSEARCH_URL=http://127.0.0.1:9200
-      - REDIS_URL=redis://127.0.0.1:6379
-      - PORT=${NEW_PORT}
-    env_file:
-      - .env
-    volumes:
-      - type: bind
-        source: ./uploads
-        target: /app/uploads
-    restart: unless-stopped
-EOL
+            version: '3.8'
+            services:
+              backend:
+                build:
+                  context: .
+                  dockerfile: Dockerfile
+                container_name: amp_backend_${NEW_ENV}
+                network_mode: "host"
+                environment:
+                  - NODE_ENV=production
+                  - ELASTICSEARCH_URL=http://127.0.0.1:9200
+                  - REDIS_URL=redis://127.0.0.1:6379
+                  - PORT=${NEW_PORT}
+                env_file:
+                  - .env
+                volumes:
+                  - type: bind
+                    source: ./uploads
+                    target: /app/uploads
+                restart: unless-stopped
+            EOL
             
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
             
