@@ -54,11 +54,8 @@ export class SearchService {
     type: 'all' | 'albums' | 'tracks' | 'playlists' | 'users',
     sort: 'relevance' | 'newest' | 'popular',
   ): Promise<SearchResponse> {
-    console.log('검색 시작 - 쿼리:', query, '타입:', type, '정렬:', sort);
-    
     try {
       if (!query) {
-        console.log('쿼리가 비어있어 빈 결과 반환');
         return {
           albums: [],
           tracks: [],
@@ -86,10 +83,7 @@ export class SearchService {
           indices = ['albums_new', 'tracks_new', 'playlists_new', 'users_new'];
       }
       
-      console.log('검색할 인덱스:', indices);
-      
       const sortConfig = this.getSortConfig(sort);
-      console.log('정렬 설정:', JSON.stringify(sortConfig));
       
       const searchParams = {
         index: indices,
@@ -145,12 +139,7 @@ export class SearchService {
         },
       };
       
-      console.log('ES 검색 쿼리:', JSON.stringify(searchParams));
-      
       const response = await this.elasticsearchClient.search(searchParams);
-      
-      console.log('ES 응답 받음');
-      console.log('ES 응답 총 히트 수:', JSON.stringify(response.hits.total));
       
       // 결과 ID 추출 및 하이라이트 정보 저장
       const hits = response.hits.hits as SearchHit[];
@@ -234,8 +223,6 @@ export class SearchService {
 
       return { albums, tracks, playlists, users };
     } catch (error) {
-      console.error('검색 처리 중 오류 발생:', error);
-      console.error('오류 세부 정보:', JSON.stringify(error, null, 2));
       throw new InternalServerErrorException(
         '검색 처리 중 오류가 발생했습니다.',
       );
@@ -464,25 +451,14 @@ export class SearchService {
     }
 
     try {
-      console.log('자동완성 요청 시작 - 쿼리:', query);
-      
       // 인덱스 존재 여부 확인
       const indices = ['albums_new', 'tracks_new', 'playlists_new', 'users_new'];
-      console.log('인덱스 존재 여부 확인 중:', indices);
       
       // 개별 인덱스별로 처리하기 위한 결과 배열
       const allSuggestions = [];
       
-      // 인덱스별로 필드 매핑 확인
-      console.log('현재 매핑 정보 확인 중...');
-      const mappingResponse = await this.elasticsearchClient.indices.getMapping({
-        index: indices,
-      });
-      console.log('매핑 정보:', JSON.stringify(mappingResponse));
-      
       // albums_new 인덱스에 대한 title.suggest 쿼리
       try {
-        console.log('albums_new에 대한 자동완성 쿼리 실행 준비');
         const albumsParams = {
           index: ['albums_new'],
           suggest: {
@@ -501,27 +477,22 @@ export class SearchService {
         };
         
         const albumsResponse = await this.elasticsearchClient.search(albumsParams);
-        const albumSuggestions = albumsResponse.suggest?.title_suggestions?.[0]?.options || [];
         
+        const albumSuggestions = albumsResponse.suggest?.title_suggestions?.[0]?.options || [];
         if (Array.isArray(albumSuggestions) && albumSuggestions.length > 0) {
           allSuggestions.push(...albumSuggestions.map(option => ({
             text: option.text,
             type: 'album',
-            _index: option._index,
+            _index: 'albums_new',
             _score: option._score,
           })));
-          
-          console.log('albums_new 자동완성 결과:', albumSuggestions.length);
-        } else {
-          console.log('albums_new 자동완성 결과 없음');
         }
       } catch (error) {
-        console.error('albums_new 자동완성 쿼리 오류:', error.message);
+        // 오류 로깅
       }
       
       // tracks_new 인덱스에 대한 title.suggest 쿼리
       try {
-        console.log('tracks_new에 대한 자동완성 쿼리 실행 준비');
         const tracksParams = {
           index: ['tracks_new'],
           suggest: {
@@ -540,27 +511,22 @@ export class SearchService {
         };
         
         const tracksResponse = await this.elasticsearchClient.search(tracksParams);
-        const trackSuggestions = tracksResponse.suggest?.title_suggestions?.[0]?.options || [];
         
+        const trackSuggestions = tracksResponse.suggest?.title_suggestions?.[0]?.options || [];
         if (Array.isArray(trackSuggestions) && trackSuggestions.length > 0) {
           allSuggestions.push(...trackSuggestions.map(option => ({
             text: option.text,
             type: 'track',
-            _index: option._index,
+            _index: 'tracks_new',
             _score: option._score,
           })));
-          
-          console.log('tracks_new 자동완성 결과:', trackSuggestions.length);
-        } else {
-          console.log('tracks_new 자동완성 결과 없음');
         }
       } catch (error) {
-        console.error('tracks_new 자동완성 쿼리 오류:', error.message);
+        // 오류 로깅
       }
       
       // playlists_new 인덱스에 대한 title.suggest 쿼리
       try {
-        console.log('playlists_new에 대한 자동완성 쿼리 실행 준비');
         const playlistsParams = {
           index: ['playlists_new'],
           suggest: {
@@ -579,27 +545,22 @@ export class SearchService {
         };
         
         const playlistsResponse = await this.elasticsearchClient.search(playlistsParams);
-        const playlistSuggestions = playlistsResponse.suggest?.title_suggestions?.[0]?.options || [];
         
+        const playlistSuggestions = playlistsResponse.suggest?.title_suggestions?.[0]?.options || [];
         if (Array.isArray(playlistSuggestions) && playlistSuggestions.length > 0) {
           allSuggestions.push(...playlistSuggestions.map(option => ({
             text: option.text,
             type: 'playlist',
-            _index: option._index,
+            _index: 'playlists_new',
             _score: option._score,
           })));
-          
-          console.log('playlists_new 자동완성 결과:', playlistSuggestions.length);
-        } else {
-          console.log('playlists_new 자동완성 결과 없음');
         }
       } catch (error) {
-        console.error('playlists_new 자동완성 쿼리 오류:', error.message);
+        // 오류 로깅
       }
       
       // users_new 인덱스에 대한 name.suggest 쿼리
       try {
-        console.log('users_new에 대한 자동완성 쿼리 실행 준비');
         const usersParams = {
           index: ['users_new'],
           suggest: {
@@ -618,22 +579,18 @@ export class SearchService {
         };
         
         const usersResponse = await this.elasticsearchClient.search(usersParams);
-        const userSuggestions = usersResponse.suggest?.name_suggestions?.[0]?.options || [];
         
+        const userSuggestions = usersResponse.suggest?.name_suggestions?.[0]?.options || [];
         if (Array.isArray(userSuggestions) && userSuggestions.length > 0) {
           allSuggestions.push(...userSuggestions.map(option => ({
             text: option.text,
             type: 'user',
-            _index: option._index,
+            _index: 'users_new',
             _score: option._score,
           })));
-          
-          console.log('users_new 자동완성 결과:', userSuggestions.length);
-        } else {
-          console.log('users_new 자동완성 결과 없음');
         }
       } catch (error) {
-        console.error('users_new 자동완성 쿼리 오류:', error.message);
+        // 오류 로깅
       }
       
       // 결과를 점수 기준으로 정렬하고 중복 제거
@@ -644,14 +601,11 @@ export class SearchService {
         )
         .slice(0, 10); // 최대 10개 결과만 반환
       
-      console.log('최종 자동완성 결과 수:', uniqueSuggestions.length);
-      
       return uniqueSuggestions;
     } catch (error) {
-      console.error('자동완성 요청 처리 오류:', error);
-      console.error('ES 오류 응답:', JSON.stringify(error.meta?.body || {}));
-      console.error('스택 트레이스:', error);
-      throw new InternalServerErrorException('자동완성 요청 처리 중 오류가 발생했습니다.');
+      throw new InternalServerErrorException(
+        '자동완성 요청 처리 중 오류가 발생했습니다.',
+      );
     }
   }
 

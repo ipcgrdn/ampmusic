@@ -104,24 +104,27 @@ jobs:
             
             # docker-compose 파일 수정 또는 생성
             cat > docker-compose.${NEW_ENV}.yml << EOL
-            services:
-              backend:
-                build:
-                  context: .
-                  dockerfile: Dockerfile
-                container_name: amp_backend_${NEW_ENV}
-                network_mode: "host"
-                environment:
-                  - NODE_ENV=production
-                  - ELASTICSEARCH_URL=http://127.0.0.1:9200
-                  - REDIS_URL=redis://127.0.0.1:6379
-                  - PORT=${NEW_PORT}
-                env_file:
-                  - .env
-                volumes:
-                  - ./uploads:/app/uploads:rw
-                restart: unless-stopped
-            EOL
+version: '3.8'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amp_backend_${NEW_ENV}
+    network_mode: "host"
+    environment:
+      - NODE_ENV=production
+      - ELASTICSEARCH_URL=http://127.0.0.1:9200
+      - REDIS_URL=redis://127.0.0.1:6379
+      - PORT=${NEW_PORT}
+    env_file:
+      - .env
+    volumes:
+      - type: bind
+        source: ./uploads
+        target: /app/uploads
+    restart: unless-stopped
+EOL
             
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
             
@@ -137,8 +140,13 @@ jobs:
             # 새 환경 배포
             echo "새 환경 ${NEW_ENV} 배포 시작..."
             COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
-            docker-compose -f ${COMPOSE_FILE} build
-            docker-compose -f ${COMPOSE_FILE} up -d
+            # Docker 버전 및 Compose 버전 확인
+            docker --version
+            docker-compose --version
+            
+            # 명시적으로 Docker Compose 명령에 버전 지정
+            COMPOSE_API_VERSION=auto docker-compose -f ${COMPOSE_FILE} build
+            COMPOSE_API_VERSION=auto docker-compose -f ${COMPOSE_FILE} up -d
             
             # 배포 완료 대기 (초기 안정화)
             echo "새 버전 안정화 대기 중..."
@@ -150,19 +158,36 @@ jobs:
             
             for i in {1..6}; do
               echo "헬스 체크 시도 ${i}/6..."
+              # 기본 헬스 체크 - HTTP 상태 코드
               RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health || echo "000")
               
               if [[ "$RESPONSE_CODE" == "200" ]]; then
-                echo "헬스 체크 성공! (응답 코드: ${RESPONSE_CODE})"
-                HEALTH_CHECK_PASS=true
-                break
+                echo "기본 헬스 체크 성공! (응답 코드: ${RESPONSE_CODE})"
+                
+                # 추가 헬스 체크 - 애플리케이션 상태 확인
+                APP_STATUS=$(curl -s http://localhost:${NEW_PORT}/health || echo "{}")
+                if [[ "$APP_STATUS" == *"\"status\":\"ok\""* ]] || [[ "$APP_STATUS" == *"\"status\":\"up\""* ]]; then
+                  echo "애플리케이션 상태 확인 성공! 애플리케이션이 정상적으로 응답합니다."
+                  HEALTH_CHECK_PASS=true
+                  break
+                else
+                  echo "애플리케이션 응답은 받았으나 상태가 정상이 아닙니다: $APP_STATUS"
+                fi
               fi
               
               echo "헬스 체크 실패 (응답 코드: ${RESPONSE_CODE}), 재시도 중..."
+              # 로그 확인을 위해 컨테이너 로그 출력
+              echo "컨테이너 로그 확인:"
+              docker logs amp_backend_${NEW_ENV} --tail 20 || echo "로그를 가져올 수 없습니다."
               sleep 5
             done
             
+            # 새 버전 헬스 체크 결과 로깅
+            echo "=== 헬스 체크 최종 결과 ==="
             if [ "$HEALTH_CHECK_PASS" = true ]; then
+              echo "✅ 헬스 체크 통과: 애플리케이션이 정상적으로 실행 중입니다."
+              echo "==========================="
+              
               echo "새 버전 검증 완료, 트래픽 전환 준비..."
               
               # Nginx 설정 업데이트
@@ -222,10 +247,10 @@ jobs:
                   # 이전 환경 종료
                   if docker ps | grep -q "amp_backend_${CURRENT_ENV}"; then
                     echo "이전 환경(${CURRENT_ENV}) 종료 중..."
-                    docker rm -f amp_backend_${CURRENT_ENV}
+                    docker rm -f amp_backend_${CURRENT_ENV} || echo "이전 환경 컨테이너를 종료할 수 없습니다. 이미 제거되었을 수 있습니다."
                   elif [ "$CURRENT_ENV" = "legacy" ] && docker ps | grep -q "amp_backend"; then
                     echo "레거시 환경 종료 중..."
-                    docker rm -f amp_backend
+                    docker rm -f amp_backend || echo "레거시 환경 컨테이너를 종료할 수 없습니다. 이미 제거되었을 수 있습니다."
                   fi
                 fi
                 
@@ -239,23 +264,39 @@ jobs:
                 echo "docker-compose 설정을 업데이트했습니다."
                 
                 echo "=== 서버 블루-그린 배포 성공 ==="
+                echo "배포 시간: $(date)"
+                echo "배포된 환경: ${NEW_ENV} (포트: ${NEW_PORT})"
                 exit 0
               else
                 echo "Nginx 설정 유효성 검사 실패, 롤백 진행..."
+                echo "Nginx 오류 로그:"
+                sudo cat /var/log/nginx/error.log | tail -n 20
+                
                 sudo cp /etc/nginx/sites-available/api.ampmusic.im.backup /etc/nginx/sites-available/api.ampmusic.im
                 sudo systemctl reload nginx
                 
                 # 새 배포 실패, 컨테이너 제거
-                docker rm -f amp_backend_${NEW_ENV}
+                echo "실패한 컨테이너 (${NEW_ENV}) 제거 중..."
+                docker rm -f amp_backend_${NEW_ENV} || echo "컨테이너를 제거할 수 없습니다. 이미 제거되었을 수 있습니다."
                 
                 echo "Nginx 설정 오류로 인한 롤백 완료"
                 exit 1
               fi
             else
+              echo "❌ 헬스 체크 실패: 애플리케이션이 정상적으로 실행되지 않았습니다."
+              echo "==========================="
+              
               echo "새 버전 헬스 체크 실패, 롤백 진행..."
+              echo "컨테이너 상태 확인:"
+              docker ps -a
+              
+              # 애플리케이션 로그 확인
+              echo "실패한 컨테이너의 마지막 로그:"
+              docker logs amp_backend_${NEW_ENV} --tail 50 || echo "로그를 가져올 수 없습니다. 컨테이너가 생성되지 않았을 수 있습니다."
               
               # 새 배포 실패, 컨테이너 제거
-              docker rm -f amp_backend_${NEW_ENV}
+              echo "실패한 컨테이너 (${NEW_ENV}) 제거 중..."
+              docker rm -f amp_backend_${NEW_ENV} || echo "컨테이너를 제거할 수 없습니다. 이미 생성되지 않았을 수 있습니다."
               
               # 레거시 환경으로 롤백 처리
               if [ "$CURRENT_ENV" = "legacy" ] && [ ! -z "$LEGACY_IMAGE" ]; then
