@@ -198,8 +198,17 @@ jobs:
             COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
             if docker-compose -f ${COMPOSE_FILE} build && docker-compose -f ${COMPOSE_FILE} up -d; then
               echo "Docker Compose를 통한 배포 성공"
+              
+              # 배포 직후 로그 확인
+              echo "배포 직후 로그 확인 중..."
+              sleep 5 # 로그가 생성될 시간을 줌
+              docker logs amp_backend_${NEW_ENV} --tail 50 || true
             else
               echo "Docker Compose 배포 실패, 직접 Docker 실행으로 대체..."
+              
+              # 실패 원인 진단
+              echo "Docker Compose 실패 원인 진단 중..."
+              docker-compose -f ${COMPOSE_FILE} logs || true
               
               # Docker 직접 실행으로 대체
               echo "이미지 빌드 중..."
@@ -219,17 +228,34 @@ jobs:
                 -e DATABASE_URL="${DB_URL}" \
                 --restart unless-stopped \
                 amp_backend:${NEW_ENV}
+              
+              # 직접 실행 후 즉시 로그 확인
+              echo "직접 Docker 실행 후 로그 확인 중..."
+              sleep 5 # 로그가 생성될 시간을 줌
+              docker logs amp_backend_${NEW_ENV} --tail 50 || true
                 
               echo "Docker 직접 실행으로 컨테이너 생성 완료"
             fi
 
             # 배포 완료 대기 (초기 안정화)
             echo "새 버전 안정화 대기 중..."
-            sleep 10
+            sleep 30  # 10초에서 30초로 증가
 
             # 컨테이너 로그 확인
             echo "새 컨테이너 로그 확인 중..."
             docker logs amp_backend_${NEW_ENV} --tail 50 || true
+
+            # 프로세스 리스트 확인하여 포트 사용 확인
+            echo "포트 사용 상태 확인 중..."
+            netstat -tulpn | grep ${NEW_PORT} || true
+            
+            # 더 자세한 컨테이너 정보 확인
+            echo "컨테이너 상태 확인 중..."
+            docker inspect amp_backend_${NEW_ENV} || true
+            
+            # 컨테이너 내 프로세스 확인
+            echo "컨테이너 내 프로세스 확인 중..."
+            docker top amp_backend_${NEW_ENV} || true
 
             # 환경 변수 상태 확인
             echo "컨테이너 내 환경 변수 확인 중..."
@@ -239,9 +265,11 @@ jobs:
             echo "새 버전 헬스 체크 시작..."
             HEALTH_CHECK_PASS=false
 
-            for i in {1..6}; do
-              echo "헬스 체크 시도 ${i}/6..."
-              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health || echo "000")
+            for i in {1..10}; do  # 6번에서 10번으로 증가
+              echo "헬스 체크 시도 ${i}/10..."
+              
+              # curl 커맨드에 타임아웃 추가
+              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 http://localhost:${NEW_PORT}/health || echo "000")
               
               if [[ "$RESPONSE_CODE" == "200" ]]; then
                 echo "헬스 체크 성공! (응답 코드: ${RESPONSE_CODE})"
@@ -250,7 +278,13 @@ jobs:
               fi
               
               echo "헬스 체크 실패 (응답 코드: ${RESPONSE_CODE}), 재시도 중..."
-              sleep 5
+              
+              # 실패 시 추가 진단 로그 확인
+              echo "실패 시 추가 진단 정보:"
+              docker logs amp_backend_${NEW_ENV} --tail 20 || true
+              netstat -tulpn | grep ${NEW_PORT} || true
+              
+              sleep 10  # 5초에서 10초로 증가
             done
 
             if [ "$HEALTH_CHECK_PASS" = true ]; then
