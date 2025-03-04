@@ -114,7 +114,7 @@ export class SearchService {
               {
                 multi_match: {
                   query,
-                  fields: ['title^2', 'title.ngram', 'description', 'name'],
+                  fields: ['title^2', 'description', 'name'],
                   type: 'best_fields',
                   operator: 'or',
                   fuzziness: 'AUTO',

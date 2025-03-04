@@ -36,9 +36,9 @@ async function bootstrap() {
   );
 
   // CSRF 보호
-  app.use(cookieParser());
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith('/search')) {
+    // 검색 관련 경로는 CSRF 보호에서 제외
+    if (req.path.startsWith('/search') || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
       next();
       return;
     }
@@ -54,12 +54,12 @@ async function bootstrap() {
 
     csrf({
       cookie: cookieOptions,
-      ignoreMethods: ['GET', 'HEAD', 'OPTIONS'],
     })(req, res, next);
   });
 
   // CSRF 토큰을 응답 헤더에 포함
   app.use((req: Request, res: Response, next: NextFunction) => {
+    // 검색 관련 경로는 제외
     if (req.path.startsWith('/search')) {
       next();
       return;
