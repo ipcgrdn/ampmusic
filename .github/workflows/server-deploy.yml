@@ -126,6 +126,10 @@ jobs:
                 restart: unless-stopped
             EOL
             
+            # Dockerfile 내용 확인
+            echo "Dockerfile 내용 확인:"
+            cat Dockerfile
+            
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
             
             # 기존에 같은 이름의 컨테이너가 있다면 제거
@@ -140,13 +144,66 @@ jobs:
             # 새 환경 배포
             echo "새 환경 ${NEW_ENV} 배포 시작..."
             COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
+            
             # Docker 버전 및 Compose 버전 확인
+            echo "=== Docker 환경 정보 ==="
             docker --version
             docker-compose --version
+            echo "========================="
             
-            # 명시적으로 Docker Compose 명령에 버전 지정
-            COMPOSE_API_VERSION=auto docker-compose -f ${COMPOSE_FILE} build
-            COMPOSE_API_VERSION=auto docker-compose -f ${COMPOSE_FILE} up -d
+            # 빌드 단계 분리 및 오류 처리 강화
+            echo "Docker 이미지 빌드 시작..."
+            if ! COMPOSE_API_VERSION=auto docker-compose -f ${COMPOSE_FILE} build --no-cache; then
+              echo "❌ Docker 이미지 빌드 실패!"
+              echo "빌드 로그 확인:"
+              cat docker-compose.log || echo "로그 파일을 찾을 수 없습니다."
+              exit 1
+            fi
+            echo "✅ Docker 이미지 빌드 성공!"
+            
+            # 컨테이너 시작 전 이미지 확인
+            echo "빌드된 이미지 확인:"
+            docker images | grep ${NEW_ENV} || echo "새 이미지를 찾을 수 없습니다."
+            
+            # 컨테이너 시작
+            echo "컨테이너 시작 중..."
+            if ! COMPOSE_API_VERSION=auto docker-compose -f ${COMPOSE_FILE} up -d; then
+              echo "❌ Docker Compose로 컨테이너 시작 실패! 직접 Docker 명령으로 시도합니다."
+              
+              # 이미지 이름 가져오기
+              IMAGE_NAME=$(docker-compose -f ${COMPOSE_FILE} config | grep "image:" | head -n 1 | awk '{print $2}')
+              if [ -z "$IMAGE_NAME" ]; then
+                # 이미지 이름이 없으면 직접 빌드
+                IMAGE_NAME="amp_backend_${NEW_ENV}:latest"
+                echo "이미지 이름을 수동으로 설정: ${IMAGE_NAME}"
+                docker build -t ${IMAGE_NAME} .
+              fi
+              
+              echo "Docker run으로 직접 컨테이너 시작 시도: ${IMAGE_NAME}"
+              if ! docker run -d --network host --name amp_backend_${NEW_ENV} \
+                -e NODE_ENV=production \
+                -e ELASTICSEARCH_URL=http://127.0.0.1:9200 \
+                -e REDIS_URL=redis://127.0.0.1:6379 \
+                -e PORT=${NEW_PORT} \
+                --env-file .env \
+                -v $(pwd)/uploads:/app/uploads \
+                --restart unless-stopped \
+                ${IMAGE_NAME}; then
+                echo "❌ 직접 Docker 명령으로도 컨테이너 시작 실패!"
+                exit 1
+              fi
+              echo "✅ 직접 Docker 명령으로 컨테이너 시작 성공!"
+            else
+              echo "✅ Docker Compose로 컨테이너 시작 성공!"
+            fi
+            
+            # 컨테이너 상태 확인
+            echo "컨테이너 상태 확인:"
+            docker ps -a | grep amp_backend_${NEW_ENV} || echo "컨테이너가 생성되지 않았습니다."
+            
+            # 컨테이너 로그 확인
+            echo "컨테이너 로그 확인:"
+            docker logs amp_backend_${NEW_ENV} --tail 50 || echo "컨테이너 로그를 가져올 수 없습니다."
             
             # 배포 완료 대기 (초기 안정화)
             echo "새 버전 안정화 대기 중..."
