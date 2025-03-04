@@ -54,9 +54,9 @@ export class SearchService {
     type: 'all' | 'albums' | 'tracks' | 'playlists' | 'users',
     sort: 'relevance' | 'newest' | 'popular',
   ): Promise<SearchResponse> {
+    console.log('검색 시작 - 쿼리:', query, '타입:', type, '정렬:', sort);
+    
     try {
-      console.log('검색 시작 - 쿼리:', query, '타입:', type, '정렬:', sort);
-      
       if (!query) {
         console.log('쿼리가 비어있어 빈 결과 반환');
         return {
@@ -67,11 +67,28 @@ export class SearchService {
         };
       }
 
-      const indices =
-        type === 'all' ? ['albums', 'tracks', 'playlists', 'users'] : [type];
-      const sortConfig = this.getSortConfig(sort);
-
+      // 검색할 인덱스 결정
+      let indices = [];
+      switch (type) {
+        case 'albums':
+          indices = ['albums_new'];
+          break;
+        case 'tracks':
+          indices = ['tracks_new'];
+          break;
+        case 'playlists':
+          indices = ['playlists_new'];
+          break;
+        case 'users':
+          indices = ['users_new'];
+          break;
+        default:
+          indices = ['albums_new', 'tracks_new', 'playlists_new', 'users_new'];
+      }
+      
       console.log('검색할 인덱스:', indices);
+      
+      const sortConfig = this.getSortConfig(sort);
       console.log('정렬 설정:', JSON.stringify(sortConfig));
       
       const searchParams = {
@@ -442,32 +459,48 @@ export class SearchService {
   }
 
   async getSuggestions(query: string) {
+    if (!query || query.length < 2) {
+      return [];
+    }
+
+    console.log('자동완성 요청 시작 - 쿼리:', query);
+    
     try {
-      console.log('자동완성 요청 시작 - 쿼리:', query);
+      // 인덱스 존재 여부 확인
+      console.log('인덱스 존재 여부 확인 중:', ['albums_new', 'tracks_new', 'playlists_new', 'users_new']);
       
-      if (!query || query.length < 2) {
-        console.log('쿼리가 너무 짧아 빈 결과 반환');
-        return [];
-      }
-
-      // 1. 인덱스 존재 여부 확인
-      const indices = ['albums', 'tracks', 'playlists', 'users'];
-      console.log('인덱스 존재 여부 확인 중:', indices);
-      for (const index of indices) {
-        const exists = await this.elasticsearchClient.indices.exists({ index });
-        console.log(`인덱스 ${index} 존재 여부:`, exists);
-      }
-
-      // 2. 매핑 정보 확인
-      console.log('현재 매핑 정보 확인 중...');
-      const mappings = await this.elasticsearchClient.indices.getMapping({
-        index: indices,
+      const albumsExists = await this.elasticsearchClient.indices.exists({
+        index: 'albums_new',
       });
-      console.log('매핑 정보:', JSON.stringify(mappings));
-
+      console.log('인덱스 albums_new 존재 여부:', albumsExists);
+      
+      const tracksExists = await this.elasticsearchClient.indices.exists({
+        index: 'tracks_new',
+      });
+      console.log('인덱스 tracks_new 존재 여부:', tracksExists);
+      
+      const playlistsExists = await this.elasticsearchClient.indices.exists({
+        index: 'playlists_new',
+      });
+      console.log('인덱스 playlists_new 존재 여부:', playlistsExists);
+      
+      const usersExists = await this.elasticsearchClient.indices.exists({
+        index: 'users_new',
+      });
+      console.log('인덱스 users_new 존재 여부:', usersExists);
+      
+      // 매핑 정보 가져오기
+      console.log('현재 매핑 정보 확인 중...');
+      const mappingInfo = await this.elasticsearchClient.indices.getMapping({
+        index: ['albums_new', 'tracks_new', 'playlists_new', 'users_new'],
+      });
+      console.log('매핑 정보:', JSON.stringify(mappingInfo));
+      
       console.log('자동완성 쿼리 실행 준비:');
-      const suggestQuery = {
-        index: indices,
+      
+      // 자동완성 API 호출
+      const searchParams = {
+        index: ['albums_new', 'tracks_new', 'playlists_new', 'users_new'],
         suggest: {
           title_suggestions: {
             prefix: query,
@@ -493,12 +526,13 @@ export class SearchService {
           },
         },
       };
+
+      console.log('자동완성 ES 쿼리:', JSON.stringify(searchParams));
+
+      const response = await this.elasticsearchClient.search(searchParams);
       
-      console.log('자동완성 ES 쿼리:', JSON.stringify(suggestQuery));
-      
-      const response = await this.elasticsearchClient.search<SuggestResponse>(suggestQuery);
-      
-      console.log('자동완성 응답 받음:', response ? '성공' : '실패');
+      console.log('ES 응답 받음');
+      console.log('ES 응답 총 히트 수:', JSON.stringify(response.hits.total));
       
       const titleSuggestions = (response.suggest?.title_suggestions?.[0]
         ?.options || []) as SuggestionOption[];
