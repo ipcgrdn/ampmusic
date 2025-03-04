@@ -41,7 +41,6 @@ jobs:
           host: ${{ secrets.BACKEND_HOST }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: DATABASE_URL
           env:
             DATABASE_URL: ${{ secrets.DATABASE_URL }}
           script: |
