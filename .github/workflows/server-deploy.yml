@@ -119,13 +119,53 @@ jobs:
                 env_file:
                   - .env
                 volumes:
-                  - ./uploads:/app/uploads
+                  - type: bind
+                    source: ./uploads
+                    target: /app/uploads
                 restart: unless-stopped
             EOL
 
             # .env 파일 권한 수정 (임시로 읽기 권한 부여)
             chmod 644 .env
 
+            # 환경 변수 확인 및 DATABASE_URL 직접 추가
+            if grep -q DATABASE_URL .env; then
+              # 환경 변수 값 추출 (잘라내기 방지를 위해 일부만 표시)
+              DB_URL=$(grep DATABASE_URL .env | cut -d= -f2-)
+              
+              # DATABASE_URL이 localhost를 가리키는지 확인
+              if echo "$DB_URL" | grep -q "@localhost:"; then
+                echo "경고: DATABASE_URL이 로컬호스트를 가리키고 있습니다. RDS 엔드포인트를 사용해야 합니다."
+                echo "현재 설정: $DB_URL"
+                echo "배포가 실패할 가능성이 높습니다!"
+              else
+                echo "설정된 DATABASE_URL 확인: ${DB_URL:0:10}...${DB_URL: -10}"
+              fi
+              
+              # DATABASE_URL에 RDS 연결 테스트
+              DB_HOST=$(echo "$DB_URL" | sed -E 's/.*@([^:]+):.*/\1/')
+              echo "데이터베이스 호스트: $DB_HOST"
+              
+              if [ ! -z "$DB_HOST" ] && [ "$DB_HOST" != "localhost" ]; then
+                echo "DB 연결 테스트 중..."
+                if nc -zv $DB_HOST 5432; then
+                  echo "데이터베이스 연결 성공!"
+                else
+                  echo "경고: 데이터베이스 연결 실패! 배포가 실패할 가능성이 높습니다."
+                fi
+              fi
+              
+              # docker-compose 파일에 직접 DATABASE_URL 추가
+              sed -i "/- PORT=\${NEW_PORT}/a \                  - DATABASE_URL=${DB_URL}" docker-compose.${NEW_ENV}.yml
+            else
+              echo "경고: .env 파일에 DATABASE_URL이 설정되어 있지 않습니다."
+            fi
+            
+            # PORT 환경 변수가 docker-compose 파일과 일치하는지 확인
+            echo "컨테이너 포트 확인 중: ${NEW_PORT}"
+            sed -i "s|PORT=4000|PORT=${NEW_PORT}|" .env
+            echo "임시 .env 파일에 PORT=${NEW_PORT} 설정 완료"
+            
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
 
             # 기존에 같은 이름의 컨테이너가 있다면 제거
@@ -140,8 +180,32 @@ jobs:
             # 새 환경 배포
             echo "새 환경 ${NEW_ENV} 배포 시작..."
             COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
-            docker-compose -f ${COMPOSE_FILE} build
-            docker-compose -f ${COMPOSE_FILE} up -d
+            if docker-compose -f ${COMPOSE_FILE} build && docker-compose -f ${COMPOSE_FILE} up -d; then
+              echo "Docker Compose를 통한 배포 성공"
+            else
+              echo "Docker Compose 배포 실패, 직접 Docker 실행으로 대체..."
+              
+              # Docker 직접 실행으로 대체
+              echo "이미지 빌드 중..."
+              docker build -t amp_backend:${NEW_ENV} .
+              
+              echo "컨테이너 실행 중..."
+              # 환경 변수 추출
+              DB_URL=$(grep DATABASE_URL .env | cut -d= -f2-)
+              
+              # 컨테이너 직접 실행
+              docker run -d --network host --name amp_backend_${NEW_ENV} \
+                -v $(pwd)/uploads:/app/uploads \
+                -e NODE_ENV=production \
+                -e ELASTICSEARCH_URL=http://127.0.0.1:9200 \
+                -e REDIS_URL=redis://127.0.0.1:6379 \
+                -e PORT=${NEW_PORT} \
+                -e DATABASE_URL="${DB_URL}" \
+                --restart unless-stopped \
+                amp_backend:${NEW_ENV}
+                
+              echo "Docker 직접 실행으로 컨테이너 생성 완료"
+            fi
 
             # 배포 완료 대기 (초기 안정화)
             echo "새 버전 안정화 대기 중..."
