@@ -430,8 +430,44 @@ export class SearchService {
     if (!query) return [];
 
     try {
+      console.log('자동완성 요청 시작:', { query });
+
+      // 1. 인덱스 존재 여부 확인
+      const indices = ['albums', 'tracks', 'playlists', 'users'];
+      for (const index of indices) {
+        const exists = await this.elasticsearchClient.indices.exists({ index });
+        console.log(`인덱스 ${index} 존재 여부:`, exists);
+      }
+
+      // 2. 매핑 정보 확인
+      const mappings = await this.elasticsearchClient.indices.getMapping({
+        index: indices
+      });
+      console.log('현재 인덱스 매핑:', JSON.stringify(mappings, null, 2));
+
+      // 3. 검색 요청 로깅
+      console.log('Elasticsearch 검색 요청:', {
+        indices,
+        suggest: {
+          title_suggestions: {
+            prefix: query,
+            completion: {
+              field: 'title.suggest',
+              size: 5
+            }
+          },
+          name_suggestions: {
+            prefix: query,
+            completion: {
+              field: 'name.suggest',
+              size: 5
+            }
+          }
+        }
+      });
+
       const response = await this.elasticsearchClient.search<SuggestResponse>({
-        index: ['albums', 'tracks', 'playlists', 'users'],
+        index: indices,
         suggest: {
           title_suggestions: {
             prefix: query,
@@ -458,10 +494,26 @@ export class SearchService {
         },
       });
 
+      // 4. 응답 데이터 로깅
+      console.log('Elasticsearch 응답:', {
+        took: response.took,
+        hits_total: response.hits?.total,
+        suggest: {
+          title_suggestions: response.suggest?.title_suggestions?.[0]?.options,
+          name_suggestions: response.suggest?.name_suggestions?.[0]?.options
+        }
+      });
+
       const titleSuggestions = (response.suggest?.title_suggestions?.[0]
         ?.options || []) as SuggestionOption[];
       const nameSuggestions = (response.suggest?.name_suggestions?.[0]
         ?.options || []) as SuggestionOption[];
+
+      // 5. 변환된 제안 데이터 로깅
+      console.log('제안 데이터 변환:', {
+        titleSuggestionsCount: titleSuggestions.length,
+        nameSuggestionsCount: nameSuggestions.length
+      });
 
       const suggestions = [...titleSuggestions, ...nameSuggestions].map(
         (option) => ({
@@ -471,10 +523,32 @@ export class SearchService {
         }),
       );
 
+      // 6. 최종 결과 로깅
+      console.log('최종 제안 결과:', {
+        totalSuggestions: suggestions.length,
+        suggestions: suggestions.slice(0, 5)
+      });
+
       return suggestions.slice(0, 5);
     } catch (error) {
+      // 7. 상세 에러 로깅
+      console.error('자동완성 처리 중 상세 오류:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause,
+        response: error.response?.body,
+        status: error.response?.statusCode,
+        meta: error.meta
+      });
+
+      // 8. 클라이언트에 더 자세한 에러 메시지 전달
       throw new InternalServerErrorException(
-        '자동완성 처리 중 오류가 발생했습니다.',
+        `자동완성 처리 중 오류가 발생했습니다: ${error.message}`,
+        {
+          cause: error,
+          description: '자동완성 요청 처리 실패'
+        }
       );
     }
   }

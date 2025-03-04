@@ -27,7 +27,7 @@ export default function ExplorePage() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconChartBar className="w-6 h-6 text-purple-400" />
-                  <h2 className="text-2xl font-bold text-white">실시간 차트</h2>
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">실시간 차트</h2>
                 </div>
                 <Suspense fallback={<Loading />}>
                   <TopCharts />
@@ -42,7 +42,7 @@ export default function ExplorePage() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconDisc className="w-6 h-6 text-emerald-400" />
-                  <h2 className="text-2xl font-bold text-white">신규 발매</h2>
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">신규 발매</h2>
                 </div>
                 <Suspense fallback={<Loading />}>
                   <NewReleases />
@@ -57,7 +57,7 @@ export default function ExplorePage() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconPlaylist className="w-6 h-6 text-blue-400" />
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">
                     인기 플레이리스트
                   </h2>
                 </div>
@@ -74,7 +74,7 @@ export default function ExplorePage() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconUsers className="w-6 h-6 text-pink-400" />
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">
                     주목할 아티스트
                   </h2>
                 </div>

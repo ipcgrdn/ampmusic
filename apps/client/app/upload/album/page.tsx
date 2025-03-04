@@ -26,7 +26,7 @@ export default function AlbumUploadPage() {
             </div>
 
             <div className="flex items-center justify-center">
-              <p className="text-xs md:text-sm text-white font-bold">
+              <p className="text-sm text-white font-bold">
                 AMP는 저작권 정책을 준수합니다.
                 <br />
                 <Link

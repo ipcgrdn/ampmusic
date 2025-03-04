@@ -37,7 +37,7 @@ export default function Home() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconUsers className="w-6 h-6 text-purple-400" />
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">
                     팔로우 업데이트
                   </h2>
                 </div>
@@ -58,7 +58,9 @@ export default function Home() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconSparkles className="w-6 h-6 text-amber-400" />
-                  <h2 className="text-2xl font-bold text-white">추천 트랙</h2>
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">
+                    추천 트랙
+                  </h2>
                 </div>
                 <Suspense fallback={<Loading />}>
                   <TrackRecommendations />
@@ -77,7 +79,7 @@ export default function Home() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconUsersGroup className="w-6 h-6 text-blue-400" />
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">
                     비슷한 취향의 유저들이 좋아하는
                   </h2>
                 </div>
@@ -98,7 +100,7 @@ export default function Home() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconActivity className="w-6 h-6 text-green-400" />
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">
                     팔로우한 유저들의 활동
                   </h2>
                 </div>
@@ -119,7 +121,7 @@ export default function Home() {
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <IconHeart className="w-6 h-6 text-red-400" />
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">
                     팔로우한 유저들이 좋아하는
                   </h2>
                 </div>
