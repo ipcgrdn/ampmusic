@@ -102,17 +102,52 @@ jobs:
               docker rm amp_backend
             fi
             
-            # docker-compose 파일 수정 또는 생성
             # 주요 환경 변수 확인
             DATABASE_URL=$(grep DATABASE_URL .env | cut -d '=' -f2- || echo "")
             if [ -z "$DATABASE_URL" ]; then
               echo "경고: DATABASE_URL을 .env 파일에서 찾을 수 없습니다!"
             else
               echo "DATABASE_URL 환경 변수가 확인되었습니다."
+              
+              # DATABASE_URL 형식 검증 및 수정
+              if [[ ! "$DATABASE_URL" =~ ^(postgresql://|postgres://) ]]; then
+                echo "경고: DATABASE_URL이 postgresql:// 또는 postgres://로 시작하지 않습니다!"
+                
+                # 형식이 올바르지 않으면 원본 URL 백업 후 수정 시도
+                echo "원본 DATABASE_URL: $DATABASE_URL"
+                ORIGINAL_DB_URL="$DATABASE_URL"
+                
+                # 가능한 형식을 확인하고 수정
+                if [[ "$DATABASE_URL" =~ ^mysql:// ]]; then
+                  # mysql:// 형식인 경우 postgresql://로 변경
+                  DATABASE_URL="postgresql://${DATABASE_URL#mysql://}"
+                  echo "MySQL URL을 PostgreSQL URL로 변환합니다."
+                elif [[ "$DATABASE_URL" =~ ^/ ]]; then
+                  # 절대 경로인 경우 (소켓 파일 등)
+                  DATABASE_URL="postgresql://postgres:postgres@localhost:5432/amp_db"
+                  echo "경로 형식의 URL을 PostgreSQL URL로 변환합니다."
+                elif [[ "$DATABASE_URL" =~ ^[^:]+:[^:]+@[^:]+:[0-9]+/[^/]+$ ]]; then
+                  # user:password@host:port/dbname 형식인 경우
+                  DATABASE_URL="postgresql://$DATABASE_URL"
+                  echo "프로토콜이 없는 URL에 postgresql:// 프로토콜을 추가합니다."
+                else
+                  # 알 수 없는 형식인 경우 기본값 설정
+                  echo "DATABASE_URL 형식을 인식할 수 없어 기본값으로 대체합니다."
+                  DATABASE_URL="postgresql://postgres:postgres@localhost:5432/amp_db"
+                fi
+                
+                echo "수정된 DATABASE_URL: $DATABASE_URL"
+                
+                # 임시 .env 파일 생성
+                TMP_ENV=$(mktemp)
+                cat .env | sed "s|DATABASE_URL=.*|DATABASE_URL=$DATABASE_URL|g" > $TMP_ENV
+                mv $TMP_ENV .env
+                echo "환경 변수 파일을 업데이트했습니다."
+              fi
             fi
             
+            # docker-compose 파일 수정 또는 생성
             cat > docker-compose.${NEW_ENV}.yml << EOL
-            version: '3.8'
             services:
               backend:
                 build:
@@ -261,6 +296,42 @@ jobs:
                 echo "경고: DATABASE_URL을 .env 파일에서 찾을 수 없습니다!"
               else
                 echo "DATABASE_URL 환경 변수가 확인되었습니다."
+                
+                # DATABASE_URL 형식 검증 및 수정
+                if [[ ! "$DATABASE_URL" =~ ^(postgresql://|postgres://) ]]; then
+                  echo "경고: DATABASE_URL이 postgresql:// 또는 postgres://로 시작하지 않습니다!"
+                  
+                  # 형식이 올바르지 않으면 원본 URL 백업 후 수정 시도
+                  echo "원본 DATABASE_URL: $DATABASE_URL"
+                  ORIGINAL_DB_URL="$DATABASE_URL"
+                  
+                  # 가능한 형식을 확인하고 수정
+                  if [[ "$DATABASE_URL" =~ ^mysql:// ]]; then
+                    # mysql:// 형식인 경우 postgresql://로 변경
+                    DATABASE_URL="postgresql://${DATABASE_URL#mysql://}"
+                    echo "MySQL URL을 PostgreSQL URL로 변환합니다."
+                  elif [[ "$DATABASE_URL" =~ ^/ ]]; then
+                    # 절대 경로인 경우 (소켓 파일 등)
+                    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/amp_db"
+                    echo "경로 형식의 URL을 PostgreSQL URL로 변환합니다."
+                  elif [[ "$DATABASE_URL" =~ ^[^:]+:[^:]+@[^:]+:[0-9]+/[^/]+$ ]]; then
+                    # user:password@host:port/dbname 형식인 경우
+                    DATABASE_URL="postgresql://$DATABASE_URL"
+                    echo "프로토콜이 없는 URL에 postgresql:// 프로토콜을 추가합니다."
+                  else
+                    # 알 수 없는 형식인 경우 기본값 설정
+                    echo "DATABASE_URL 형식을 인식할 수 없어 기본값으로 대체합니다."
+                    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/amp_db"
+                  fi
+                  
+                  echo "수정된 DATABASE_URL: $DATABASE_URL"
+                  
+                  # 임시 .env 파일 생성
+                  TMP_ENV=$(mktemp)
+                  cat .env | sed "s|DATABASE_URL=.*|DATABASE_URL=$DATABASE_URL|g" > $TMP_ENV
+                  mv $TMP_ENV .env
+                  echo "환경 변수 파일을 업데이트했습니다."
+                fi
               fi
               
               if ! docker run -d --network host --name amp_backend_${NEW_ENV} \
@@ -270,7 +341,7 @@ jobs:
                 -e PORT=${NEW_PORT} \
                 -e DATABASE_URL="$DATABASE_URL" \
                 --env-file .env \
-                -v $(pwd)/uploads:/app/uploads \
+                -v $(pwd)/uploads:/app/uploads:Z \
                 --restart unless-stopped \
                 ${IMAGE_NAME}; then
                 echo "❌ 직접 Docker 명령으로도 컨테이너 시작 실패!"
