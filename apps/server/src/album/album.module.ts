@@ -20,4 +20,3 @@ import { NotificationModule } from 'src/notification/notification.module';
   exports: [AlbumService],
 })
 export class AlbumModule {}
- 
