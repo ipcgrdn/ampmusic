@@ -155,49 +155,15 @@ jobs:
                 fi
               fi
               
-              # DB_URL에 프로토콜이 없는 경우 추가
-              if ! echo "$DB_URL" | grep -q "^\"*postgresql://\|^\"*postgres://"; then
-                echo "DATABASE_URL에 프로토콜이 없습니다. postgresql:// 프로토콜을 추가합니다."
-                # 따옴표가 있는 경우 처리
-                if [[ "$DB_URL" == \"* ]]; then
-                  DB_URL="\"postgresql://${DB_URL:1}"
-                else
-                  DB_URL="postgresql://$DB_URL"
-                fi
-                echo "수정된 DATABASE_URL: ${DB_URL:0:20}...${DB_URL: -10}"
-              fi
-              
-              # .env 파일 백업
-              cp .env .env.backup
-              
-              # 임시 파일에 환경 변수 정리하여 저장
-              grep -v "^DATABASE_URL=" .env > .env.tmp
-              echo "DATABASE_URL=${DB_URL}" >> .env.tmp
-              mv .env.tmp .env
-              
-              # .env 파일 내용 검증
-              echo "====== .env 파일 유효성 검사 ======"
-              cat .env | grep -v PASSWORD | head -n 10 || true
-              echo "====== .env 파일 검증 완료 ========"
-              
-              # 데이터베이스 URL 최종 확인
-              FINAL_DB_URL=$(grep "^DATABASE_URL=" .env | cut -d= -f2-)
-              echo "최종 DATABASE_URL 확인: ${FINAL_DB_URL:0:20}...${FINAL_DB_URL: -10}"
-              
-              # docker-compose 파일에 DATABASE_URL 직접 추가
+              # docker-compose 파일에 직접 DATABASE_URL 추가
               sed -i "/- PORT=\${NEW_PORT}/a \                  - DATABASE_URL=${DB_URL}" docker-compose.${NEW_ENV}.yml
-              
-              echo ".env 파일의 DATABASE_URL을 새로 설정했습니다."
             else
               echo "경고: .env 파일에 DATABASE_URL이 설정되어 있지 않습니다."
             fi
             
-            # PORT 환경 변수도 단순하게 처리
+            # PORT 환경 변수가 docker-compose 파일과 일치하는지 확인
             echo "컨테이너 포트 확인 중: ${NEW_PORT}"
-            # 임시 파일에 PORT 설정
-            grep -v "^PORT=" .env > .env.tmp
-            echo "PORT=${NEW_PORT}" >> .env.tmp
-            mv .env.tmp .env
+            sed -i "s|PORT=4000|PORT=${NEW_PORT}|" .env
             echo "임시 .env 파일에 PORT=${NEW_PORT} 설정 완료"
             
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
@@ -216,27 +182,16 @@ jobs:
             COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
             if docker-compose -f ${COMPOSE_FILE} build && docker-compose -f ${COMPOSE_FILE} up -d; then
               echo "Docker Compose를 통한 배포 성공"
-              
-              # 배포 직후 로그 확인
-              echo "배포 직후 로그 확인 중..."
-              sleep 5 # 로그가 생성될 시간을 줌
-              docker logs amp_backend_${NEW_ENV} --tail 50 || true
             else
               echo "Docker Compose 배포 실패, 직접 Docker 실행으로 대체..."
-              
-              # 실패 원인 진단
-              echo "Docker Compose 실패 원인 진단 중..."
-              docker-compose -f ${COMPOSE_FILE} logs || true
               
               # Docker 직접 실행으로 대체
               echo "이미지 빌드 중..."
               docker build -t amp_backend:${NEW_ENV} .
               
               echo "컨테이너 실행 중..."
-              # 환경 변수 추출 - 정확한 DATABASE_URL 사용
-              DB_URL=$(grep "^DATABASE_URL=" .env | cut -d= -f2-)
-              
-              echo "사용할 DATABASE_URL: ${DB_URL:0:20}...${DB_URL: -10}"
+              # 환경 변수 추출
+              DB_URL=$(grep DATABASE_URL .env | cut -d= -f2-)
               
               # 컨테이너 직접 실행
               docker run -d --network host --name amp_backend_${NEW_ENV} \
@@ -248,36 +203,17 @@ jobs:
                 -e DATABASE_URL="${DB_URL}" \
                 --restart unless-stopped \
                 amp_backend:${NEW_ENV}
-              
-              # 직접 실행 후 즉시 로그 확인
-              echo "직접 Docker 실행 후 로그 확인 중..."
-              sleep 5 # 로그가 생성될 시간을 줌
-              docker logs amp_backend_${NEW_ENV} --tail 50 || true
                 
               echo "Docker 직접 실행으로 컨테이너 생성 완료"
             fi
 
             # 배포 완료 대기 (초기 안정화)
             echo "새 버전 안정화 대기 중..."
-            sleep 30  # 10초에서 30초로 증가
+            sleep 10
 
             # 컨테이너 로그 확인
             echo "새 컨테이너 로그 확인 중..."
             docker logs amp_backend_${NEW_ENV} --tail 50 || true
-
-            # 포트 사용 상태 확인 (netstat 대신 ss 사용)
-            echo "포트 사용 상태 확인 중..."
-            ss -tulpn | grep ${NEW_PORT} || echo "ss 명령어를 사용할 수 없습니다"
-            # 대체 방법: lsof로 확인
-            lsof -i :${NEW_PORT} || echo "lsof 명령어를 사용할 수 없습니다"
-            
-            # 더 자세한 컨테이너 정보 확인
-            echo "컨테이너 상태 확인 중..."
-            docker inspect amp_backend_${NEW_ENV} || true
-            
-            # 컨테이너 내 프로세스 확인
-            echo "컨테이너 내 프로세스 확인 중..."
-            docker top amp_backend_${NEW_ENV} || true
 
             # 환경 변수 상태 확인
             echo "컨테이너 내 환경 변수 확인 중..."
@@ -287,11 +223,9 @@ jobs:
             echo "새 버전 헬스 체크 시작..."
             HEALTH_CHECK_PASS=false
 
-            for i in {1..10}; do  # 6번에서 10번으로 증가
-              echo "헬스 체크 시도 ${i}/10..."
-              
-              # curl 커맨드에 타임아웃 추가
-              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 http://localhost:${NEW_PORT}/health || echo "000")
+            for i in {1..6}; do
+              echo "헬스 체크 시도 ${i}/6..."
+              RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health || echo "000")
               
               if [[ "$RESPONSE_CODE" == "200" ]]; then
                 echo "헬스 체크 성공! (응답 코드: ${RESPONSE_CODE})"
@@ -300,14 +234,7 @@ jobs:
               fi
               
               echo "헬스 체크 실패 (응답 코드: ${RESPONSE_CODE}), 재시도 중..."
-              
-              # 실패 시 추가 진단 로그 확인
-              echo "실패 시 추가 진단 정보:"
-              docker logs amp_backend_${NEW_ENV} --tail 20 || true
-              ss -tulpn | grep ${NEW_PORT} || echo "ss 명령어를 사용할 수 없습니다"
-              lsof -i :${NEW_PORT} || echo "lsof 명령어를 사용할 수 없습니다"
-              
-              sleep 10  # 5초에서 10초로 증가
+              sleep 5
             done
 
             if [ "$HEALTH_CHECK_PASS" = true ]; then
