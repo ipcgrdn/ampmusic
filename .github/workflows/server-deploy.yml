@@ -150,18 +150,6 @@ jobs:
                 echo "DB 연결 테스트 중..."
                 if nc -zv $DB_HOST 5432; then
                   echo "데이터베이스 연결 성공!"
-                  
-                  # Prisma 마이그레이션 실행 (배포 전에 DB 스키마 동기화)
-                  echo "Prisma 스키마 동기화 시작..."
-                  export DATABASE_URL="${DB_URL}"
-                  npx prisma generate
-                  npx prisma migrate deploy
-                  
-                  if [ $? -eq 0 ]; then
-                    echo "Prisma 마이그레이션 성공!"
-                  else
-                    echo "경고: Prisma 마이그레이션 실패! 배포가 실패할 가능성이 높습니다."
-                  fi
                 else
                   echo "경고: 데이터베이스 연결 실패! 배포가 실패할 가능성이 높습니다."
                 fi
@@ -178,23 +166,6 @@ jobs:
             sed -i "s|PORT=4000|PORT=${NEW_PORT}|" .env
             echo "임시 .env 파일에 PORT=${NEW_PORT} 설정 완료"
             
-            # Dockerfile에 Prisma 엔진 설치 로직 추가
-            echo "Dockerfile에 Prisma 엔진 설치 로직 추가 중..."
-            if ! grep -q "prisma-engines" Dockerfile; then
-              # Dockerfile 백업
-              cp Dockerfile Dockerfile.backup
-              
-              # Prisma 엔진 설치 로직 추가
-              sed -i '/^FROM node:18-alpine AS builder/a \\\nRUN apk add --no-cache openssl \\\n    && mkdir -p /prisma-engines \\\n    && npm install -g prisma \\\n    && prisma --version' Dockerfile
-              
-              # COPY 명령 추가
-              sed -i '/^FROM node:18-alpine/a \\\nCOPY --from=builder /prisma-engines /prisma-engines' Dockerfile
-              
-              echo "Dockerfile 수정 완료"
-            else
-              echo "Dockerfile에 이미 Prisma 엔진 설치 로직이 있습니다."
-            fi
-            
             echo "새 환경 ${NEW_ENV} 배포 준비 (포트: ${NEW_PORT})"
 
             # 기존에 같은 이름의 컨테이너가 있다면 제거
@@ -206,11 +177,6 @@ jobs:
             # Docker 캐시 정리 (이미지 충돌 방지)
             docker system prune -f
 
-            # Prisma 생성 단계 분리
-            echo "Prisma 클라이언트 생성 중..."
-            export DATABASE_URL="${DB_URL}"
-            npx prisma generate
-            
             # 새 환경 배포
             echo "새 환경 ${NEW_ENV} 배포 시작..."
             COMPOSE_FILE="docker-compose.${NEW_ENV}.yml"
@@ -227,7 +193,7 @@ jobs:
               # 환경 변수 추출
               DB_URL=$(grep DATABASE_URL .env | cut -d= -f2-)
               
-              # 컨테이너 직접 실행 (Prisma가 올바르게 작동하도록 환경 변수 설정)
+              # 컨테이너 직접 실행
               docker run -d --network host --name amp_backend_${NEW_ENV} \
                 -v $(pwd)/uploads:/app/uploads \
                 -e NODE_ENV=production \
@@ -235,7 +201,6 @@ jobs:
                 -e REDIS_URL=redis://127.0.0.1:6379 \
                 -e PORT=${NEW_PORT} \
                 -e DATABASE_URL="${DB_URL}" \
-                -e PRISMA_BINARY_TARGETS="native" \
                 --restart unless-stopped \
                 amp_backend:${NEW_ENV}
                 
