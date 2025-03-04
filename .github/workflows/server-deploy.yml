@@ -103,6 +103,14 @@ jobs:
             fi
             
             # docker-compose 파일 수정 또는 생성
+            # 주요 환경 변수 확인
+            DATABASE_URL=$(grep DATABASE_URL .env | cut -d '=' -f2- || echo "")
+            if [ -z "$DATABASE_URL" ]; then
+              echo "경고: DATABASE_URL을 .env 파일에서 찾을 수 없습니다!"
+            else
+              echo "DATABASE_URL 환경 변수가 확인되었습니다."
+            fi
+            
             cat > docker-compose.${NEW_ENV}.yml << EOL
             version: '3.8'
             services:
@@ -117,12 +125,11 @@ jobs:
                   - ELASTICSEARCH_URL=http://127.0.0.1:9200
                   - REDIS_URL=redis://127.0.0.1:6379
                   - PORT=${NEW_PORT}
+                  - DATABASE_URL=${DATABASE_URL}
                 env_file:
                   - .env
                 volumes:
-                  - type: bind
-                    source: ./uploads
-                    target: /app/uploads
+                  - ./uploads:/app/uploads:Z
                 restart: unless-stopped
             EOL
             
@@ -247,11 +254,21 @@ jobs:
               fi
               
               echo "Docker run으로 직접 컨테이너 시작 시도: ${IMAGE_NAME}"
+              
+              # DATABASE_URL 환경 변수 확인 및 직접 전달
+              DATABASE_URL=$(grep DATABASE_URL .env | cut -d '=' -f2- || echo "")
+              if [ -z "$DATABASE_URL" ]; then
+                echo "경고: DATABASE_URL을 .env 파일에서 찾을 수 없습니다!"
+              else
+                echo "DATABASE_URL 환경 변수가 확인되었습니다."
+              fi
+              
               if ! docker run -d --network host --name amp_backend_${NEW_ENV} \
                 -e NODE_ENV=production \
                 -e ELASTICSEARCH_URL=http://127.0.0.1:9200 \
                 -e REDIS_URL=redis://127.0.0.1:6379 \
                 -e PORT=${NEW_PORT} \
+                -e DATABASE_URL="$DATABASE_URL" \
                 --env-file .env \
                 -v $(pwd)/uploads:/app/uploads \
                 --restart unless-stopped \
