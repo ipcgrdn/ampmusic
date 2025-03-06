@@ -9,6 +9,7 @@ import { InitialDataLoader } from '@/components/notification/initial-data-loader
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Suspense } from 'react';
 import { Loading } from "@/components/ui/loading";
+import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 
 // viewport 설정을 별도로 분리
 export const viewport: Viewport = {
@@ -75,6 +76,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className="dark" suppressHydrationWarning>
       <body className="bg-black text-white">
+        <GoogleAnalytics />
         <NuqsAdapter>
           <QueryProvider>
             <AuthProvider>
