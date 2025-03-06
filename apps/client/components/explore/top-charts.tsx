@@ -136,7 +136,7 @@ export function TopCharts() {
     return (
       <div className="flex items-center justify-center py-16 px-4">
         <p className="text-sm text-white/40 text-center">
-          현재 신규 발매된 앨범이 없습니다
+          실시간 차트가 집계중입니다.
         </p>
       </div>
     );

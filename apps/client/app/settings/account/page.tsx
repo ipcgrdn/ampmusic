@@ -43,6 +43,7 @@ export default function AccountSettingsPage() {
       setIsDeleting(true);
       await api.delete(`/users/${user.id}`);
       showToast("계정이 삭제되었습니다.", "success");
+      window.location.href = "/auth";
       await logout(); // 계정 삭제 후 로그아웃
     } catch {
       showToast("계정 삭제에 실패했습니다.", "error");
