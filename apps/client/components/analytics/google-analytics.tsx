@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 // window 객체에 gtag 속성 추가
 declare global {
@@ -13,10 +13,13 @@ declare global {
 
 export function GoogleAnalytics() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [mounted, setMounted] = useState(false);
   const GA_TRACKING_ID = 'G-2CPLLC2PW9';
 
+  // 초기 마운트와 GA 스크립트 로드
   useEffect(() => {
+    setMounted(true);
+    
     // Google Analytics 스크립트 추가
     const script1 = document.createElement('script');
     script1.async = true;
@@ -42,13 +45,18 @@ export function GoogleAnalytics() {
 
   // 페이지 변경 시 페이지뷰 이벤트 전송
   useEffect(() => {
+    if (!mounted) return;
+    
+    // 현재 URL에서 쿼리 파라미터 추출
+    const searchParams = window.location.search;
+    
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'page_view', {
         page_path: pathname,
-        page_search: searchParams.toString(),
+        page_search: searchParams,
       });
     }
-  }, [pathname, searchParams]);
+  }, [pathname, mounted]);
 
   return null;
 } 
