@@ -17,8 +17,8 @@ import { Client } from '@elastic/elasticsearch';
         return new Client({
           node: node,
           tls: {
-            rejectUnauthorized: false
-          }
+            rejectUnauthorized: false,
+          },
         });
       },
     },
@@ -29,7 +29,13 @@ export class SearchModule implements OnModuleInit {
   constructor(private readonly searchService: SearchService) {}
 
   async onModuleInit() {
+    // 개발 환경에서는 동기화를 건너뜁니다
+    if (process.env.NODE_ENV === 'development') {
+      console.log('로컬 개발 환경: 검색 인덱스 동기화를 건너뜁니다.');
+      return;
+    }
+
     await this.searchService.initializeIndices();
     await this.searchService.syncData();
   }
-} 
+}

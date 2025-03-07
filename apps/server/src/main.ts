@@ -13,6 +13,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
 
+  // 개발/프로덕션 환경 확인
+  const isProduction = process.env.NODE_ENV === 'production';
+
   // 보안 미들웨어 추가
   app.use(helmet());
   app.use(cookieParser());
@@ -36,15 +39,15 @@ async function bootstrap() {
   );
 
   // CSRF 보호
+  app.use(cookieParser());
   app.use((req: Request, res: Response, next: NextFunction) => {
     // 검색 관련 경로는 CSRF 보호에서 제외
-    if (req.path.startsWith('/search') || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    if (req.path.startsWith('/search')) {
       next();
       return;
     }
 
-    // 프로덕션 환경에서만 도메인 설정
-    const isProduction = process.env.NODE_ENV === 'production';
+    // 쿠키 설정
     const cookieOptions = {
       httpOnly: true,
       sameSite: 'lax' as const,
@@ -54,6 +57,7 @@ async function bootstrap() {
 
     csrf({
       cookie: cookieOptions,
+      ignoreMethods: ['GET', 'HEAD', 'OPTIONS'], // 이 설정을 다시 추가
     })(req, res, next);
   });
 
@@ -67,14 +71,18 @@ async function bootstrap() {
 
     // 기존 XSRF-TOKEN 쿠키가 있다면 제거
     if (req.cookies['XSRF-TOKEN']) {
+      // 환경에 따라 도메인 설정을 다르게 적용
       res.clearCookie('XSRF-TOKEN', {
-        domain: 'api.ampmusic.im',
+        domain: isProduction ? '.ampmusic.im' : undefined,
         path: '/',
       });
     }
 
+    // CSRF 토큰 설정
     if (req.csrfToken) {
-      const isProduction = process.env.NODE_ENV === 'production';
+      // 로그 추가 (디버깅 목적)
+      console.log('CSRF 토큰 생성:', req.path);
+      
       res.cookie('XSRF-TOKEN', req.csrfToken(), {
         httpOnly: false,
         secure: isProduction,
@@ -82,7 +90,10 @@ async function bootstrap() {
         path: '/',
         domain: isProduction ? '.ampmusic.im' : undefined,
       });
+    } else {
+      console.error('CSRF 토큰을 생성할 수 없습니다:', req.path);
     }
+    
     next();
   });
 
