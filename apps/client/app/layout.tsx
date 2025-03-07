@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-icon.png" }],
   },
   verification: {
-    google: "google-site-verification=YOUR_CODE",
+    google: "google-site-verification=z3Ik4toCVSDcF5Jvg0g9Zs5HrfIeH9_r7voKNKBFDZA",
   },
 };
 

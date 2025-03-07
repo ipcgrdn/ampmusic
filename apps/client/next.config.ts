@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
+import withPWA from 'next-pwa';
 
 // 빌드 타임스탬프 생성 (캐시 버스팅에 사용)
 const buildId = Date.now().toString();
 
+// 기본 Next.js 구성
 const nextConfig: NextConfig = {
   env: {
     API_URL:
@@ -23,12 +25,29 @@ const nextConfig: NextConfig = {
 
   // 특정 경로에 대한 페이지 설정 추가
   async redirects() {
-    return [];
+    return [
+      {
+        // manifest.webmanifest 요청을 manifest.json으로 리디렉션
+        source: '/manifest.webmanifest',
+        destination: '/manifest.json',
+        permanent: true
+      }
+    ];
   },
 
   // 정적 페이지 생성 최적화 및 캐시 헤더 설정
   async headers() {
     return [
+      {
+        // 매니페스트 파일을 위한 적절한 MIME 타입 설정
+        source: "/manifest.json",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/manifest+json",
+          },
+        ],
+      },
       {
         // 모든 Next.js 정적 자산에 대한 캐시 제어
         source: "/_next/static/:path*",
@@ -128,4 +147,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// PWA로 Next.js 구성 감싸기
+export default withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+  // 필요한 경우 추가 PWA 설정
+})(nextConfig);
