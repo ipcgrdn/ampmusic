@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { api, resetQueue } from "@/lib/axios";
 import { User, AuthContextType, AuthError } from "@/types/auth";
 import { useRouter, usePathname } from "next/navigation";
+import { BrowserWarningModal } from "@/components/auth/browser-warning-modal";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -12,12 +13,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<AuthError | null>(null);
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
+  const detectInAppBrowser = () => {
+    if (typeof window !== "undefined") {
+      const ua = window.navigator.userAgent.toLowerCase();
+      
+      return (
+        /instagram/.test(ua) ||
+        /kakaotalk/.test(ua) ||
+        /naver/.test(ua) ||
+        /fban|fbav/.test(ua) ||
+        /line/.test(ua) ||
+        (/\bsafari\b/.test(ua) &&
+          /\bmobile\b/.test(ua) &&
+          !/chrome|crios|firefox|fxios|edg|edge/.test(ua))
+      );
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    const inApp = detectInAppBrowser();
+    setIsInAppBrowser(inApp);
+  }, []);
+
   const clearError = () => setError(null);
 
-  // 인증 상태 초기화 함수
   const resetAuthState = () => {
     setUser(null);
     setIsError(false);
@@ -26,7 +51,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetQueue();
   };
 
-  // 인증 에러 처리 함수
+  const handleCloseWarningModal = () => {
+    setIsWarningModalOpen(false);
+  };
+
   const handleAuthError = (error: any) => {
     console.error("Auth error:", error);
     resetAuthState();
@@ -35,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       code: error?.response?.data?.code || "AUTH_ERROR",
     });
 
-    // auth 경로에서는 리다이렉션하지 않음
     if (!pathname.startsWith("/auth")) {
       router.push("/auth");
     }
@@ -44,7 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        // auth 경로에서는 사용자 정보를 로드하지 않음
         if (pathname.startsWith("/auth")) {
           setIsLoading(false);
           return;
@@ -65,12 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router, pathname]);
 
   useEffect(() => {
-    // 토큰 관련 에러 이벤트 리스너
     const handleTokenError = () => {
       handleLogout();
     };
 
-    // 401 에러 이벤트 리스너
     const handleUnauthorized = () => {
       resetAuthState();
       router.push("/auth");
@@ -86,6 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const login = () => {
+    if (isInAppBrowser) {
+      setIsWarningModalOpen(true);
+      return;
+    }
+    
     router.push(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`);
   };
 
@@ -116,6 +145,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      <BrowserWarningModal 
+        isOpen={isWarningModalOpen} 
+        onClose={handleCloseWarningModal} 
+      />
     </AuthContext>
   );
 }

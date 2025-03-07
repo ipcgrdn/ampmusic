@@ -80,9 +80,6 @@ async function bootstrap() {
 
     // CSRF 토큰 설정
     if (req.csrfToken) {
-      // 로그 추가 (디버깅 목적)
-      console.log('CSRF 토큰 생성:', req.path);
-      
       res.cookie('XSRF-TOKEN', req.csrfToken(), {
         httpOnly: false,
         secure: isProduction,
@@ -93,7 +90,7 @@ async function bootstrap() {
     } else {
       console.error('CSRF 토큰을 생성할 수 없습니다:', req.path);
     }
-    
+
     next();
   });
 
