@@ -7,7 +7,6 @@ import {
   IconBrowser,
   IconCopy,
   IconExternalLink,
-  IconBrandSafari,
 } from "@tabler/icons-react";
 
 interface BrowserWarningModalProps {
@@ -47,12 +46,6 @@ export function BrowserWarningModal({
         setInAppBrowserType("facebook");
       } else if (/line/.test(ua)) {
         setInAppBrowserType("line");
-      } else if (
-        /\bsafari\b/.test(ua) &&
-        /\bmobile\b/.test(ua) &&
-        !/chrome|crios|firefox|fxios|edg|edge/.test(ua)
-      ) {
-        setInAppBrowserType("safari_mobile");
       }
     }
   }, []);
@@ -368,11 +361,6 @@ export function BrowserWarningModal({
                   )}
                 </button>
 
-                <p className="text-xs text-white/50 mt-4">
-                  이 제한은 Google의 보안 정책으로 인한 것입니다. 외부
-                  브라우저에서 로그인하면 계정 보안이 더욱 강화됩니다.
-                </p>
-
                 {inAppBrowserType && (
                   <p className="text-xs text-indigo-400/70 mt-1">
                     감지된 브라우저:{" "}
@@ -386,9 +374,7 @@ export function BrowserWarningModal({
                             ? "페이스북"
                             : inAppBrowserType === "line"
                               ? "라인"
-                              : inAppBrowserType === "safari_mobile"
-                                ? "모바일 Safari"
-                                : "기타 인앱 브라우저"}
+                              : "기타 인앱 브라우저"}
                   </p>
                 )}
               </div>

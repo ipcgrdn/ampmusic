@@ -27,10 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         /kakaotalk/.test(ua) ||
         /naver/.test(ua) ||
         /fban|fbav/.test(ua) ||
-        /line/.test(ua) ||
-        (/\bsafari\b/.test(ua) &&
-          /\bmobile\b/.test(ua) &&
-          !/chrome|crios|firefox|fxios|edg|edge/.test(ua))
+        /line/.test(ua)
       );
     }
     return false;

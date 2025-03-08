@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import withPWA from 'next-pwa';
+import withPWA from "next-pwa";
 
 // 빌드 타임스탬프 생성 (캐시 버스팅에 사용)
 const buildId = Date.now().toString();
@@ -25,29 +25,12 @@ const nextConfig: NextConfig = {
 
   // 특정 경로에 대한 페이지 설정 추가
   async redirects() {
-    return [
-      {
-        // manifest.webmanifest 요청을 manifest.json으로 리디렉션
-        source: '/manifest.webmanifest',
-        destination: '/manifest.json',
-        permanent: true
-      }
-    ];
+    return [];
   },
 
   // 정적 페이지 생성 최적화 및 캐시 헤더 설정
   async headers() {
     return [
-      {
-        // 매니페스트 파일을 위한 적절한 MIME 타입 설정
-        source: "/manifest.json",
-        headers: [
-          {
-            key: "Content-Type",
-            value: "application/manifest+json",
-          },
-        ],
-      },
       {
         // 모든 Next.js 정적 자산에 대한 캐시 제어
         source: "/_next/static/:path*",
@@ -131,9 +114,9 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "api.ampmusic.im",
         pathname: "/**",
-      }
+      },
     ],
-    domains: ["cdn.ampmusic.im", "api.ampmusic.im"],  // 추가적인 보안을 위한 도메인 허용 목록
+    domains: ["cdn.ampmusic.im", "api.ampmusic.im"], // 추가적인 보안을 위한 도메인 허용 목록
     deviceSizes: [640, 768, 1024, 1280, 1536],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     formats: ["image/webp"],
@@ -147,11 +130,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-// PWA로 Next.js 구성 감싸기
-export default withPWA({
+// PWA 완전 비활성화 
+const config = withPWA({
   dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-  // 필요한 경우 추가 PWA 설정
+  register: false,
+  skipWaiting: false,
+  disable: true // 완전 비활성화
 })(nextConfig);
+
+export default config;
