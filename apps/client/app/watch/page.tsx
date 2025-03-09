@@ -23,7 +23,7 @@ export default function WatchPage() {
   if (!currentTrack) return null;
 
   return (
-    <div className="relative min-h-[calc(100vh-6rem)] w-full bg-gradient-to-br from-purple-500/5 via-black to-indigo-500/5 py-8">
+    <div className="relative min-h-[calc(100vh-6rem)] w-full bg-gradient-to-br from-purple-500/5 via-black to-indigo-500/5 py-8 overflow-y-auto">
       {/* 배경 블러 효과 */}
       <div className="absolute inset-0 backdrop-blur-3xl" />
       
