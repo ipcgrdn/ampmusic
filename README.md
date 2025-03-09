@@ -40,4 +40,4 @@ AMP(Alternative Music Platform)는 아티스트와 팬을 위한 새로운 음�
 
 ## 연락처
 - 프로젝트 팀: amp.from.vivian@gmail.com
-- 웹사이트: https://amp-music.im
+- 웹사이트: https://ampmusic.im
