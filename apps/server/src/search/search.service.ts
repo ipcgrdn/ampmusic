@@ -614,7 +614,7 @@ export class SearchService {
     document: any,
   ) {
     try {
-      const index = `${type}s`; // albums, tracks, playlists, users
+      const index = `${type}s_new`; // albums_new, tracks_new, playlists_new, users_new
 
       const baseDocument = {
         id: document.id,

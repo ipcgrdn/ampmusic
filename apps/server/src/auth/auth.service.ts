@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Tokens } from './types/tokens.type';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
+import { SearchService } from '../search/search.service';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly searchService: SearchService,
   ) {}
 
   async validateUser(email: string): Promise<any> {
@@ -118,13 +120,22 @@ export class AuthService {
     }
 
     // 새로운 유저인 경우에만 생성
-    return this.prisma.user.create({
+    const newUser = await this.prisma.user.create({
       data: {
         email: profile.email,
         name: profile.name,
         avatar: profile.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}`,
       },
     });
+    
+    // 새 사용자 인덱싱
+    try {
+      await this.searchService.indexDocument('user', newUser);
+    } catch (error) {
+      console.error('Failed to index new user:', error);
+    }
+    
+    return newUser;
   }
 
   async generateTokens(user: User) {

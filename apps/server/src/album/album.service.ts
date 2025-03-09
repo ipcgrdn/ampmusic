@@ -72,6 +72,11 @@ export class AlbumService {
 
     await this.searchService.indexDocument('album', album);
 
+    // 앨범의 트랙들도 인덱싱
+    for (const track of album.tracks) {
+      await this.searchService.indexDocument('track', track);
+    }
+
     // 팔로워들에게 알림 전송
     const followers = await this.prisma.follow.findMany({
       where: { followingId: userId },
@@ -265,6 +270,11 @@ export class AlbumService {
     });
 
     await this.searchService.indexDocument('album', updatedAlbum);
+
+    // 업데이트된 트랙들도 인덱싱
+    for (const track of updatedAlbum.tracks) {
+      await this.searchService.indexDocument('track', track);
+    }
 
     // 새로 태그된 사용자들에게 알림 발송
     if (taggedUserIds?.length) {
