@@ -85,7 +85,7 @@ export function SortableTrackItem({
           </div>
         )}
         <div className="truncate">
-          <div className="font-medium text-white/90 truncate group-hover:text-white">
+          <div className="font-medium text-white/90 truncate group-hover:text-white text-sm">
             {track.title}
           </div>
           {showArtist && track.artist && (

@@ -340,7 +340,7 @@ export default function AlbumPage() {
 
                         {/* Track Title */}
                         <div className="min-w-0">
-                          <p className="font-medium text-white group-hover:text-white/90 truncate">
+                          <p className="font-medium text-white group-hover:text-white/90 truncate text-sm">
                             {track.title}
                           </p>
                         </div>
