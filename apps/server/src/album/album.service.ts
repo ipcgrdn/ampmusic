@@ -43,6 +43,8 @@ export class AlbumService {
         tracks: {
           create: tracks.map((track) => ({
             ...track,
+            // order 값이 1 이상이 되도록 보장
+            order: track.order && track.order > 0 ? track.order : 1,
             description: track.description || null,
             lyrics: track.lyrics || null,
             credit: track.credit || null,
@@ -234,13 +236,16 @@ export class AlbumService {
         
         // 새로운 트랙 생성
         for (const track of tracks) {
+          // order 값이 1 이상이 되도록 보장
+          const safeOrder = track.order && track.order > 0 ? track.order : 1;
+          
           if (track.id && existingTrackIds.includes(track.id)) {
             // 기존 트랙 업데이트
             await prisma.track.update({
               where: { id: track.id },
               data: {
                 ...track,
-                order: track.order,
+                order: safeOrder,
               },
             });
           } else {
@@ -248,6 +253,7 @@ export class AlbumService {
             await prisma.track.create({
               data: {
                 ...track,
+                order: safeOrder,
                 album: { connect: { id } },
                 artist: { connect: { id: userId } },
               },
@@ -264,6 +270,20 @@ export class AlbumService {
             },
           },
         });
+        
+        // 남은 트랙들의 순서를 재정렬하여 연속적인 순서 보장
+        const remainingTracks = await prisma.track.findMany({
+          where: { albumId: id },
+          orderBy: { order: 'asc' },
+        });
+        
+        // 트랙 순서 재정렬 (1부터 연속적으로)
+        for (let i = 0; i < remainingTracks.length; i++) {
+          await prisma.track.update({
+            where: { id: remainingTracks[i].id },
+            data: { order: i + 1 },
+          });
+        }
       }
 
       return updated;

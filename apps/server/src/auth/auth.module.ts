@@ -11,6 +11,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import csrf from 'csurf';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AdminGuard } from './guards/admin.guard';
+import { SearchModule } from '../search/search.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AdminGuard } from './guards/admin.guard';
       }),
       inject: [ConfigService],
     }),
+    SearchModule,
   ],
   controllers: [AuthController],
   providers: [
