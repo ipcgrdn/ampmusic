@@ -263,13 +263,37 @@ export class AlbumService {
 
         // 삭제된 트랙 처리
         const updatedTrackIds = tracks.map(track => track.id).filter(Boolean);
-        await prisma.track.deleteMany({
-          where: {
-            id: {
-              in: existingTrackIds.filter(id => !updatedTrackIds.includes(id)),
+        const tracksToDeleteIds = existingTrackIds.filter(id => !updatedTrackIds.includes(id));
+        
+        // 삭제할 트랙들의 활동 로그를 먼저 삭제
+        if (tracksToDeleteIds.length > 0) {
+          await prisma.trackActivityLog.deleteMany({
+            where: {
+              trackId: {
+                in: tracksToDeleteIds,
+              },
             },
-          },
-        });
+          });
+          
+          // 나머지 연관 데이터 정리 (예: 좋아요)
+          await prisma.like.deleteMany({
+            where: {
+              itemType: 'track',
+              itemId: {
+                in: tracksToDeleteIds,
+              },
+            },
+          });
+          
+          // 이제 트랙 삭제
+          await prisma.track.deleteMany({
+            where: {
+              id: {
+                in: tracksToDeleteIds,
+              },
+            },
+          });
+        }
         
         // 남은 트랙들의 순서를 재정렬하여 연속적인 순서 보장
         const remainingTracks = await prisma.track.findMany({
@@ -286,7 +310,21 @@ export class AlbumService {
         }
       }
 
-      return updated;
+      // 업데이트된 최종 앨범 정보를 트랙 정보와 함께 다시 가져옴
+      const finalAlbum = await prisma.album.findUnique({
+        where: { id },
+        include: {
+          tracks: true,
+          artist: true,
+          taggedUsers: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      return finalAlbum;
     });
 
     await this.searchService.indexDocument('album', updatedAlbum);
@@ -339,6 +377,24 @@ export class AlbumService {
           trackId: {
             in: album.tracks.map(track => track.id),
           },
+        },
+      });
+
+      // 좋아요 데이터 삭제
+      await prisma.like.deleteMany({
+        where: {
+          itemType: 'track',
+          itemId: {
+            in: album.tracks.map(track => track.id),
+          },
+        },
+      });
+
+      // 앨범 좋아요 데이터 삭제
+      await prisma.like.deleteMany({
+        where: {
+          itemType: 'album',
+          itemId: id,
         },
       });
 
