@@ -124,14 +124,14 @@ export function TrackList({
                     >
                       <Link
                         href={`/${track.album.id}`}
-                        className="hover:underline text-xs"
+                        className="hover:underline text-xs truncate"
                       >
                         {track.album.title}
                       </Link>
                       <span className="text-white/40"> • </span>
                       <Link
                         href={`/${track.artist.id}`}
-                        className="hover:underline text-xs"
+                        className="hover:underline text-xs truncate"
                       >
                         {track.artist.name}
                       </Link>
@@ -148,7 +148,7 @@ export function TrackList({
                 >
                   <Link
                     href={`/${track.artist.id}`}
-                    className="hover:underline text-sm"
+                    className="hover:underline text-sm truncate"
                   >
                     {track.artist.name}
                   </Link>
@@ -163,7 +163,7 @@ export function TrackList({
                 >
                   <Link
                     href={`/album/${track.album.id}`}
-                    className="hover:underline text-sm"
+                    className="hover:underline text-sm truncate"
                   >
                     {track.album.title}
                   </Link>
