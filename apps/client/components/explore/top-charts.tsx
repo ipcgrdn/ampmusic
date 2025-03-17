@@ -36,19 +36,19 @@ const convertToTrack = (track: ChartTrack): Track => ({
     artist: {
       id: track.album.artist.id,
       name: track.album.artist.name,
-      email: '',
-      image: '',
+      email: "",
+      image: "",
     },
-    description: '',
-    releaseDate: '',
-    artistId: '',
+    description: "",
+    releaseDate: "",
+    artistId: "",
     tracks: [],
   },
   artist: {
     id: track.album.artist.id,
     name: track.album.artist.name,
-    email: '',
-    image: '',
+    email: "",
+    image: "",
   },
   duration: track.duration,
   audioUrl: track.audioUrl,
@@ -106,7 +106,7 @@ export function TopCharts() {
       try {
         const { data } = await api.get("/tracks/charts/realtime");
         setTracks(data);
-        
+
         // 마지막 업데이트 시간 표시 추가
         setLastUpdated(new Date());
       } catch (error) {
@@ -150,7 +150,7 @@ export function TopCharts() {
           마지막 업데이트: {lastUpdated.toLocaleTimeString()}
         </div>
       )}
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {tracks.slice(0, displayCount).map((track, index) => (
           <motion.div
@@ -205,7 +205,9 @@ export function TopCharts() {
                     href={`/album/${track.album.id}`}
                     className="text-white/60 hover:text-white/80 truncate"
                   >
-                    {track.album.title}
+                    {track.album.title.length > 10
+                      ? `${track.album.title.substring(0, 10)}...`
+                      : track.album.title}
                   </Link>
                   <span className="text-white/40">•</span>
                   <Link
@@ -236,7 +238,10 @@ export function TopCharts() {
 
                 {/* TrackActions 버튼 */}
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <TrackActions track={convertToTrack(track)} onAddToPlaylist={handleTrackAction} />
+                  <TrackActions
+                    track={convertToTrack(track)}
+                    onAddToPlaylist={handleTrackAction}
+                  />
                 </div>
               </div>
             </div>

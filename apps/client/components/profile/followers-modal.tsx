@@ -16,23 +16,23 @@ import { IconUsers, IconUserOff, IconSearch, IconX, IconArrowLeft } from "@table
 import { Loader2, AlertCircle } from "lucide-react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
 
 interface FollowersModalProps {
   userId: string;
   isOpen: boolean;
   onClose: () => void;
 }
-
 export function FollowersModal({ userId, isOpen, onClose }: FollowersModalProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery);
+  const { user } = useAuth();
 
   // queryClient 가져오기
   const queryClient = useQueryClient();
@@ -55,8 +55,6 @@ export function FollowersModal({ userId, isOpen, onClose }: FollowersModalProps)
     onClose();
   };
 
-  const parentRef = useRef<HTMLDivElement>(null);
-
   const filteredFollowers = useMemo(() => {
     if (!data?.followers) return [];
     return data.followers.filter(follower => 
@@ -65,12 +63,8 @@ export function FollowersModal({ userId, isOpen, onClose }: FollowersModalProps)
     );
   }, [data?.followers, debouncedSearch]);
 
-  const rowVirtualizer = useVirtualizer({
-    count: filteredFollowers.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 76, // 각 팔로워 아이템의 대략적인 높이
-    overscan: 5,
-  });
+  // 가상화 시도를 멈추고 단순 리스트 렌더링으로 변경
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const renderError = () => {
     const isNotFound = error instanceof Error && error.message.includes('찾을 수 없습니다');
@@ -193,69 +187,57 @@ export function FollowersModal({ userId, isOpen, onClose }: FollowersModalProps)
         )}
       >
         {renderSearchBar()}
-        <div
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const follower = filteredFollowers[virtualRow.index];
-            return (
-              <motion.div
-                key={follower.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: virtualRow.index * 0.05 }}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: virtualRow.size,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                className="py-1"
-              >
-                <div className="group relative backdrop-blur-md bg-white/5 rounded-lg p-3 border border-white/5 
-                             hover:bg-white/10 hover:border-white/10 transition-all duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-[#e6c200]/5 
+        <div className="space-y-2 pb-2">
+          {filteredFollowers.map((follower, index) => (
+            <motion.div
+              key={follower.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                delay: Math.min(index * 0.03, 0.5),
+                duration: 0.2
+              }}
+              className="w-full"
+            >
+              <div className="group relative backdrop-blur-md bg-white/5 rounded-lg p-2 border border-white/5 
+                          hover:bg-white/10 hover:border-white/10 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-[#e6c200]/5 
                                 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity duration-300" />
-                  
-                  <div className="relative flex items-center justify-between gap-4">
-                    <Link
-                      href={`/${follower.id}`}
-                      className="flex items-center gap-3 flex-1 min-w-0"
-                    >
-                      <div className="relative h-12 w-12 rounded-full overflow-hidden bg-white/5">
-                        <Image
-                          src={getImageUrl(follower.avatar)}
-                          alt={follower.name}
-                          fill
-                          sizes="48px"
-                          priority={virtualRow.index < 4}
-                          loading={virtualRow.index < 4 ? "eager" : "lazy"}
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
+                
+                <div className="relative flex items-center justify-between gap-4">
+                  <Link
+                    href={`/${follower.id}`}
+                    className="flex items-center gap-3 flex-1 min-w-0"
+                  >
+                    <div className="relative h-12 w-12 rounded-full overflow-hidden bg-white/5">
+                      <Image
+                        src={getImageUrl(follower.avatar)}
+                        alt={follower.name}
+                        fill
+                        sizes="48px"
+                        priority={index < 4}
+                        loading={index < 4 ? "eager" : "lazy"}
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-white truncate group-hover:text-[#e6c200] transition-colors">
+                        {follower.name}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-white truncate group-hover:text-[#e6c200] transition-colors">
-                          {follower.name}
+                      {follower.bio && (
+                        <div className="text-sm text-white/60 truncate group-hover:text-white/70 transition-colors">
+                          {follower.bio}
                         </div>
-                        {follower.bio && (
-                          <div className="text-sm text-white/60 truncate group-hover:text-white/70 transition-colors">
-                            {follower.bio}
-                          </div>
-                        )}
-                      </div>
-                    </Link>
+                      )}
+                    </div>
+                  </Link>
+                  {user?.id !== follower.id && (
                     <FollowButton userId={follower.id} />
-                  </div>
+                  )}
                 </div>
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     );

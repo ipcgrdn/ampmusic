@@ -165,7 +165,7 @@ export function TrackList({
                     href={`/album/${track.album.id}`}
                     className="hover:underline text-sm truncate"
                   >
-                    {track.album.title}
+                    {track.album.title.length > 10 ? `${track.album.title.substring(0, 10)}...` : track.album.title}
                   </Link>
                 </div>
               )}
