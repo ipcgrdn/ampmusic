@@ -17,10 +17,15 @@ import { TrackRecommendations } from "@/components/home/track-recommendations";
 import { SimilarUsersTracks } from "@/components/home/similar-users-tracks";
 import { FollowingActivity } from "@/components/home/following-activity";
 import { FollowingLikes } from "@/components/home/following-likes";
+import { ServiceShutdownModal } from "@/components/common/service-shutdown-modal";
 import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="relative min-h-full">
+      {/* 서비스 종료 모달 */}
+      <ServiceShutdownModal />
+      
       {/* 배경 효과 */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-background to-blue-500/5 pointer-events-none -z-20" />
       <div className="absolute inset-0 bg-grid-white/[0.02] pointer-events-none -z-10" />
